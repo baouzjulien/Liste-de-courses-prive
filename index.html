@@ -1,21 +1,55 @@
+<!DOCTYPE html>
+<!-- Déclare le type de document : HTML5 -->
+
 <html lang="fr">
-    <head>
-        <meta charset="UTF8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Liste de courses</title>
-        <link rel="stylesheet" href="styles.css"/>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Liste de courses</h1>
-            <div class="add-rayon">
-                <input type="text" id="nouveau-rayon" placeholder="Ajouter un rayon">
-                <button id="btn-ajouter-rayon">Ajouter</button>
-            </div>
-            <div id="rayons-container"></div>
+<!-- Langue principale du document (important pour accessibilité, SEO, lecteurs d’écran) -->
+
+<head>
+    <!-- Encodage des caractères (UTF-8 = standard, évite les problèmes d’accents) -->
+    <meta charset="UTF-8">
+
+    <!-- Permet un affichage correct sur mobile (responsive) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Titre affiché dans l’onglet du navigateur -->
+    <title>Liste de courses</title>
+
+    <!-- Lien vers la feuille de styles CSS -->
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+
+<body>
+    <!-- Conteneur principal de l’application -->
+    <div class="container">
+
+        <!-- Titre principal de l’application -->
+        <h1>Liste de courses</h1>
+
+        <!-- Zone d’ajout d’un nouveau rayon -->
+        <div class="add-rayon">
+
+            <!-- Input pour saisir le nom du rayon -->
+            <!-- L’id est utilisé par JavaScript -->
+            <input 
+                type="text"
+                id="nouveau-rayon"
+                placeholder="Ajouter un rayon"
+            >
+
+            <!-- Bouton pour déclencher l’ajout du rayon -->
+            <!-- L’id est utilisé par JavaScript -->
+            <button id="btn-ajouter-rayon">
+                Ajouter
+            </button>
         </div>
 
-        <script src="script.js"></script>
-    </body>
+        <!-- Conteneur vide -->
+        <!-- Les rayons seront ajoutés ici dynamiquement par JavaScript -->
+        <div id="rayons-container"></div>
+    </div>
 
+    <!-- Chargement du script JS -->
+    <!-- Placé en bas pour garantir que le DOM est chargé -->
+    <script src="script.js"></script>
+</body>
 </html>
