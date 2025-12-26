@@ -38,6 +38,12 @@ input[type="text"] {
     border-radius: 4px;
     font-size: 1rem;
 }
+input,
+button,
+textarea {
+  font-size: 16px;
+}
+
 .rayon {
     border: none;
     border-radius: 5px;
@@ -130,9 +136,6 @@ button.btn-deplacer-produit:active {
     }
     h2 {
         font-size: 1.2rem;
-    }
-    input[type="text"] {
-        font-size: 0.9rem;
     }
     .rayon {
         padding: 0.5rem;

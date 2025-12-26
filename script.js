@@ -81,6 +81,7 @@ function createRayon(nomRayon) {
 
     // Initialisation des événements propres à ce rayon
     initRayonActions(rayon);
+    initTouchDrag(rayon);
 
     return rayon;
 }
@@ -214,6 +215,8 @@ function initProduitActions(produit, container) {
 
 // Référence du rayon actuellement déplacé
 let draggedRayon = null;
+let touchDraggedRayon = null;
+let touchStartY = 0;
 
 // Début du drag
 rayonsContainer.addEventListener('dragstart', (e) => {
@@ -271,3 +274,41 @@ function getDragAfterElement(container, y) {
 
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
+
+// Initialisation du drag tactile pour un rayon
+function initTouchDrag(rayon) {
+    rayon.addEventListener('touchstart', (e) => {
+        // Un seul doigt
+        if (e.touches.length !== 1) return;
+
+        touchDraggedRayon = rayon;
+        touchStartY = e.touches[0].clientY;
+
+        rayon.classList.add('dragging');
+        e.preventDefault(); // empêche scroll / zoom iOS
+    }, { passive: false });
+
+    rayon.addEventListener('touchmove', (e) => {
+        if (!touchDraggedRayon) return;
+
+        const touchY = e.touches[0].clientY;
+        const afterElement = getDragAfterElement(rayonsContainer, touchY);
+
+        if (afterElement == null) {
+            rayonsContainer.appendChild(touchDraggedRayon);
+        } else {
+            rayonsContainer.insertBefore(touchDraggedRayon, afterElement);
+        }
+
+        e.preventDefault();
+    }, { passive: false });
+
+    rayon.addEventListener('touchend', () => {
+        if (!touchDraggedRayon) return;
+
+        touchDraggedRayon.classList.remove('dragging');
+        touchDraggedRayon = null;
+    });
+}
+
+
