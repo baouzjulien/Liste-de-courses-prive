@@ -282,9 +282,8 @@ function initTouchDrag(rayon) {
 
     rayon.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
-
         startY = e.touches[0].clientY;
-        isDragging = false; // pas encore de drag
+        isDragging = false;
     });
 
     rayon.addEventListener('touchmove', (e) => {
@@ -293,8 +292,7 @@ function initTouchDrag(rayon) {
         const touchY = e.touches[0].clientY;
         const delta = Math.abs(touchY - startY);
 
-        // On considère que le mouvement > 10px est un drag
-        if (delta > 10) {
+        if (delta > 10) { // seuil pour déclencher drag
             if (!isDragging) {
                 rayon.classList.add('dragging');
                 isDragging = true;
@@ -311,12 +309,10 @@ function initTouchDrag(rayon) {
         }
     }, { passive: false });
 
-    rayon.addEventListener('touchend', () => {
+    rayon.addEventListener('touchend', (e) => {
         if (isDragging) {
             rayon.classList.remove('dragging');
         }
+        isDragging = false;
     });
 }
-
-
-
