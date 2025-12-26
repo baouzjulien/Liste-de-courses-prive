@@ -277,37 +277,46 @@ function getDragAfterElement(container, y) {
 
 // Initialisation du drag tactile pour un rayon
 function initTouchDrag(rayon) {
+    let startY = 0;
+    let isDragging = false;
+
     rayon.addEventListener('touchstart', (e) => {
-        // Un seul doigt
         if (e.touches.length !== 1) return;
 
-        touchDraggedRayon = rayon;
-        touchStartY = e.touches[0].clientY;
-
-        rayon.classList.add('dragging');
-        e.preventDefault(); // empêche scroll / zoom iOS
-    }, { passive: false });
+        startY = e.touches[0].clientY;
+        isDragging = false; // pas encore de drag
+    });
 
     rayon.addEventListener('touchmove', (e) => {
-        if (!touchDraggedRayon) return;
+        if (e.touches.length !== 1) return;
 
         const touchY = e.touches[0].clientY;
-        const afterElement = getDragAfterElement(rayonsContainer, touchY);
+        const delta = Math.abs(touchY - startY);
 
-        if (afterElement == null) {
-            rayonsContainer.appendChild(touchDraggedRayon);
-        } else {
-            rayonsContainer.insertBefore(touchDraggedRayon, afterElement);
+        // On considère que le mouvement > 10px est un drag
+        if (delta > 10) {
+            if (!isDragging) {
+                rayon.classList.add('dragging');
+                isDragging = true;
+            }
+
+            const afterElement = getDragAfterElement(rayonsContainer, touchY);
+            if (afterElement == null) {
+                rayonsContainer.appendChild(rayon);
+            } else {
+                rayonsContainer.insertBefore(rayon, afterElement);
+            }
+
+            e.preventDefault(); // seulement si c’est un vrai drag
         }
-
-        e.preventDefault();
     }, { passive: false });
 
-     btnDeplacer.addEventListener('touchend', () => {
-        if (!touchDraggedRayon) return;
-        touchDraggedRayon.classList.remove('dragging');
-        touchDraggedRayon = null;
+    rayon.addEventListener('touchend', () => {
+        if (isDragging) {
+            rayon.classList.remove('dragging');
+        }
     });
 }
+
 
 
