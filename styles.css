@@ -170,4 +170,8 @@ button.btn-deplacer-produit:active {
     .btn-deplacer-produit {
         font-size: 0.7rem;
     }
+    .rayon-footer {
+        flex-direction: row;
+        align-items: center;
+    }
 }
