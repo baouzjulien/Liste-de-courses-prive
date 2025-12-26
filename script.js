@@ -11,9 +11,7 @@ const nomRayonInput = document.getElementById('nouveau-rayon');
 ========================= */
 
 nomRayonInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        ajouterRayonBtn.click();
-    }
+    if (e.key === 'Enter') ajouterRayonBtn.click();
 });
 
 ajouterRayonBtn.addEventListener('click', () => {
@@ -50,7 +48,7 @@ function createRayon(nomRayon) {
         <div class="rayon-footer">
             <input type="text" class="nouveau-produit" placeholder="Ajout produit">
             <button class="btn-ajouter-produit">➕</button>
-            <button class="btn-deplacer-produit">déplacer</button>
+            <button class="btn-deplacer-produit">↕️</button>
         </div>
     `;
 
@@ -73,7 +71,6 @@ function initRayonActions(rayon) {
     const titre = rayon.querySelector('h2');
 
     btnSupprimer.addEventListener('click', () => rayon.remove());
-
     btnModifier.addEventListener('click', () => {
         const nouveauNom = prompt('Entrez le nouveau nom du rayon:', titre.textContent);
         if (nouveauNom) titre.textContent = nouveauNom;
@@ -137,7 +134,7 @@ function initProduitActions(produit, container) {
 }
 
 /* =========================
-   DRAG & DROP (RAYONS)
+   DRAG & DROP (PC)
 ========================= */
 
 let draggedRayon = null;
@@ -174,7 +171,7 @@ function getDragAfterElement(container, y) {
 }
 
 /* =========================
-   DRAG TACTILE AVEC PLACEHOLDER
+   DRAG TACTILE FLUIDE
 ========================= */
 
 function initTouchDrag(rayon) {
@@ -182,21 +179,31 @@ function initTouchDrag(rayon) {
     if (!btnDeplacer) return;
 
     let placeholder = null;
+    let startY = 0;
+    let offsetY = 0;
 
     btnDeplacer.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
 
-        rayon.classList.add('dragging');
+        const rect = rayon.getBoundingClientRect();
+        startY = e.touches[0].clientY;
+        offsetY = startY - rect.top;
 
+        // Crée le placeholder
         placeholder = document.createElement('div');
         placeholder.className = 'rayon-placeholder';
-        placeholder.style.height = rayon.offsetHeight + 'px';
-        placeholder.style.backgroundColor = '#ddd';
-        placeholder.style.border = '2px dashed #aaa';
-        placeholder.style.marginBottom = '1.5rem';
-        placeholder.style.borderRadius = '5px';
-
+        placeholder.style.height = rect.height + 'px';
         rayon.parentNode.insertBefore(placeholder, rayon.nextSibling);
+
+        // Passe le rayon en position absolue
+        rayon.style.position = 'absolute';
+        rayon.style.width = rect.width + 'px';
+        rayon.style.top = rect.top + 'px';
+        rayon.style.left = rect.left + 'px';
+        rayon.style.zIndex = '1000';
+        rayon.style.transition = 'none';
+        rayon.classList.add('dragging');
+
         e.preventDefault();
     }, { passive: false });
 
@@ -204,17 +211,27 @@ function initTouchDrag(rayon) {
         if (!placeholder) return;
 
         const touchY = e.touches[0].clientY;
-        const afterElement = getDragAfterElement(rayonsContainer, touchY);
+        rayon.style.top = (touchY - offsetY) + 'px';
 
-        if (!afterElement) rayonsContainer.appendChild(rayon);
-        else rayonsContainer.insertBefore(rayon, afterElement);
+        const afterElement = getDragAfterElement(rayonsContainer, touchY);
+        if (!afterElement) rayonsContainer.appendChild(placeholder);
+        else rayonsContainer.insertBefore(placeholder, afterElement);
 
         e.preventDefault();
     }, { passive: false });
 
     btnDeplacer.addEventListener('touchend', () => {
         if (!placeholder) return;
+
+        rayon.style.position = '';
+        rayon.style.width = '';
+        rayon.style.top = '';
+        rayon.style.left = '';
+        rayon.style.zIndex = '';
+        rayon.style.transition = '';
         rayon.classList.remove('dragging');
+
+        placeholder.parentNode.insertBefore(rayon, placeholder);
         placeholder.remove();
         placeholder = null;
     });
