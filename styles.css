@@ -62,12 +62,6 @@ textarea {
     justify-content: space-between;
     align-items: center;
 }
-.rayon.dragging {
-    user-select: none; /* Empêche la sélection du texte */
-    -webkit-user-select: none; /* Safari/iOS */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* IE10+ */
-}
 .btn-modifier-rayon,
 .btn-supprimer-rayon{
     border: none;
@@ -149,4 +143,26 @@ button.btn-deplacer-produit:active {
     .produit-nom {
         font-size: 0.9rem;
     }
+}
+
+/* =========================
+   MOBILE TOUCH & IOS FIXES
+========================= */
+
+/* Empêche zoom automatique iOS sur input */
+input, textarea, select {
+    font-size: 16px; /* déjà ok dans ton CSS */
+}
+
+/* Empêche sélection texte pendant drag */
+body, .rayon, .produit {
+    -webkit-user-select: none; /* iOS */
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Permet une manipulation tactile correcte pour le drag */
+.rayon {
+    touch-action: manipulation;
 }
