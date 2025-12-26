@@ -1,80 +1,130 @@
-const rayons = document.getElementById('rayons-container');
+const rayonsContainer = document.getElementById('rayons-container');
 const ajouterRayonBtn = document.getElementById('btn-ajouter-rayon');
 const nomRayonInput = document.getElementById('nouveau-rayon');
 
-// Ajouter un nouveau rayon -------------------------------------------------------------
-ajouterRayonBtn.addEventListener('click', () => {
-    const nomRayon = nomRayonInput.value.trim();
-    if (nomRayon) {
-        const nouveauRayon = document.createElement('div');
-        nouveauRayon.className = 'rayon';
-        nouveauRayon.innerHTML =
-        `<h2>${nomRayon}</h2>
-        <div class= "rayon-actions">
-          <button class="btn-modifier-rayon">Modifier</button>
-          <button class="btn-supprimer-rayon">supprimer</button>
-        </div>
-        <div class="produits-container"></div>
-        <input type="text" class="nouveau-produit" placeholder="Nom du produit">
-        <button class="btn-ajouter-produit">Ajouter Produit</button>
-        `;
-        rayons.appendChild(nouveauRayon);
-        nomRayonInput.value = '';
-        const btnSupprimerRayon = nouveauRayon.querySelector('.btn-supprimer-rayon');
-        btnSupprimerRayon.addEventListener('click', () => {
-            rayons.removeChild(nouveauRayon);
-        });
-        const btnModifierRayon = nouveauRayon.querySelector('.btn-modifier-rayon');
-        btnModifierRayon.addEventListener('click', () => {
-            const nouveauNom = prompt('Entrez le nouveau nom du rayon:', nomRayon);
-            if (nouveauNom) {
-                nouveauRayon.querySelector('h2').textContent = nouveauNom;
-            }
-        });
-
-
-        const btnAjouterProduit = nouveauRayon.querySelector('.btn-ajouter-produit');
-        const nouveauProduitInput = nouveauRayon.querySelector('.nouveau-produit');
-        const produitsContainer = nouveauRayon.querySelector('.produits-container');
-        btnAjouterProduit.addEventListener('click', () => {
-            const nomProduit = nouveauProduitInput.value.trim();
-            if (nomProduit) {
-                const nouveauProduit = document.createElement('div');
-                nouveauProduit.className = 'produit';
-                nouveauProduit.innerHTML =
-                `
-                <input type="checkbox" class="produit-checkbox">
-                <span class="produit-nom">${nomProduit}</span>
-                <div class="produit-actions">
-                    <button class="btn-modifier-produit">Modifier</button>
-                    <button class="btn-supprimer-produit">Supprimer</button>
-                </div>`;
-                const btnSupprimerProduit = nouveauProduit.querySelector('.btn-supprimer-produit');
-                btnSupprimerProduit.addEventListener('click', () => {
-                    produitsContainer.removeChild(nouveauProduit);});
-                const btnModifierProduit = nouveauProduit.querySelector('.btn-modifier-produit');
-                btnModifierProduit.addEventListener('click', () => {
-                    const nouveauNomProduit = prompt('Entrez le nouveau nom du produit:', nomProduit);
-                    if (nouveauNomProduit) {
-                        nouveauProduit.querySelector(".produit-nom").textContent = nouveauNomProduit;
-                    }             });
-                produitsContainer.appendChild(nouveauProduit);
-                nouveauProduitInput.value = '';
-                const produitCheckbox = nouveauProduit.querySelector('.produit-checkbox');
-                produitCheckbox.addEventListener('change', () => {
-                    if (produitCheckbox.checked) {
-                        nouveauProduit.classList.add('produit-coche');
-                        produitsContainer.appendChild(nouveauProduit);
-                    } else {
-                        nouveauProduit.classList.remove('checked');
-                        produitsContainer.prepend(nouveauProduit);
-                    }
-                });
-            } else {
-                alert('Veuillez entrer un nom de produit valide.');
-        }    });
-
-    } else {
-        alert('Veuillez entrer un nom de rayon valide.');
+/* =========================
+   AJOUT RAYON
+========================= */
+nomRayonInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        ajouterRayonBtn.click();
     }
 });
+
+ajouterRayonBtn.addEventListener('click', () => {
+    const nomRayon = nomRayonInput.value.trim();
+    if (!nomRayon) {
+        alert('Veuillez entrer un nom de rayon valide.');
+        return;
+    }
+
+    const rayon = createRayon(nomRayon);
+    rayonsContainer.appendChild(rayon);
+    nomRayonInput.value = '';
+});
+
+function createRayon(nomRayon) {
+    const rayon = document.createElement('div');
+    rayon.className = 'rayon';
+    rayon.innerHTML = `
+        <div class="rayon-header">
+          <h2>${nomRayon}</h2>
+            <div class="rayon-actions">
+                <button class="btn-modifier-rayon">🖋️</button>
+                <button class="btn-supprimer-rayon">❌</button>
+            </div>
+        </div>
+        
+        <div class="produits-container"></div>
+        <input type="text" class="nouveau-produit" placeholder="Ajout produit">
+        <button class="btn-ajouter-produit">➕</button>
+    `;
+
+    initRayonActions(rayon);
+    return rayon;
+}
+
+function initRayonActions(rayon) {
+    const btnSupprimer = rayon.querySelector('.btn-supprimer-rayon');
+    const btnModifier = rayon.querySelector('.btn-modifier-rayon');
+    const btnAjouterProduit = rayon.querySelector('.btn-ajouter-produit');
+    const inputProduit = rayon.querySelector('.nouveau-produit');
+    const produitsContainer = rayon.querySelector('.produits-container');
+    const titre = rayon.querySelector('h2');
+
+    btnSupprimer.addEventListener('click', () => {
+        rayon.remove();
+    });
+
+    btnModifier.addEventListener('click', () => {
+        const nouveauNom = prompt('Entrez le nouveau nom du rayon:', titre.textContent);
+        if (nouveauNom) {
+            titre.textContent = nouveauNom;
+        }
+    });
+
+    inputProduit.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        btnAjouterProduit.click();
+    }
+});
+
+    btnAjouterProduit.addEventListener('click', () => {
+        const nomProduit = inputProduit.value.trim();
+        if (!nomProduit) {
+            alert('Veuillez entrer un nom de produit valide.');
+            return;
+        }
+
+        addProduit(produitsContainer, nomProduit);
+        inputProduit.value = '';
+    });
+}
+
+/* =========================
+   PRODUITS
+========================= */
+
+function addProduit(container, nomProduit) {
+    const produit = document.createElement('div');
+    produit.className = 'produit';
+    produit.innerHTML = `
+        <input type="checkbox" class="produit-checkbox">
+        <span class="produit-nom">${nomProduit}</span>
+        <div class="produit-actions">
+            <button class="btn-modifier-produit">🖋️</button>
+            <button class="btn-supprimer-produit">❌</button>
+        </div>
+    `;
+
+    initProduitActions(produit, container);
+    container.appendChild(produit);
+}
+
+function initProduitActions(produit, container) {
+    const checkbox = produit.querySelector('.produit-checkbox');
+    const btnSupprimer = produit.querySelector('.btn-supprimer-produit');
+    const btnModifier = produit.querySelector('.btn-modifier-produit');
+    const nom = produit.querySelector('.produit-nom');
+
+    btnSupprimer.addEventListener('click', () => {
+        produit.remove();
+    });
+
+    btnModifier.addEventListener('click', () => {
+        const nouveauNom = prompt('Entrez le nouveau nom du produit:', nom.textContent);
+        if (nouveauNom) {
+            nom.textContent = nouveauNom;
+        }
+    });
+
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+            produit.classList.add('produit-coche');
+            container.appendChild(produit);
+        } else {
+            produit.classList.remove('produit-coche');
+            container.prepend(produit);
+        }
+    });
+}

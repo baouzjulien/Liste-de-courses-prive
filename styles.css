@@ -1,0 +1,68 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgb(225, 225, 225);
+}
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+    color: #333;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 8px;
+}
+h1 {
+    text-align: center;
+    margin-bottom: 1rem;
+    background-color: #b5b5b5;
+}
+h2 {
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+.rayon {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: #fafafa;
+}
+.add-rayon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+.rayon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.produit {
+    display: flex;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+.produit-actions button {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    line-height: 1;
+}
+.produit-coche {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+button {
+    cursor: pointer;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+}
