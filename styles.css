@@ -66,3 +66,17 @@ button {
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
 }
+.rayon-footer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+button.btn-deplacer-produit {
+    margin-left: auto;
+}
+button.btn-deplacer-produit:hover {
+    cursor: grab;
+}
+button.btn-deplacer-produit:active {
+    cursor: grabbing;
+}

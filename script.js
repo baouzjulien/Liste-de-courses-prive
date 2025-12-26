@@ -26,6 +26,7 @@ ajouterRayonBtn.addEventListener('click', () => {
 function createRayon(nomRayon) {
     const rayon = document.createElement('div');
     rayon.className = 'rayon';
+    rayon.setAttribute('draggable', 'true');
     rayon.innerHTML = `
         <div class="rayon-header">
           <h2>${nomRayon}</h2>
@@ -36,8 +37,12 @@ function createRayon(nomRayon) {
         </div>
         
         <div class="produits-container"></div>
-        <input type="text" class="nouveau-produit" placeholder="Ajout produit">
-        <button class="btn-ajouter-produit">➕</button>
+        <div class="rayon-footer">
+          <input type="text" class="nouveau-produit" placeholder="Ajout produit">
+          <button class="btn-ajouter-produit">➕</button>
+          <button class="btn-deplacer-produit">🤚</button>
+        </div>
+        
     `;
 
     initRayonActions(rayon);
@@ -127,4 +132,40 @@ function initProduitActions(produit, container) {
             container.prepend(produit);
         }
     });
+}
+
+/* =========================
+   DRAG & DROP
+========================= */
+
+let draggedRayon = null;
+
+rayonsContainer.addEventListener('dragstart', (e) => {
+    if(e.target.classList.contains('rayon')){
+        draggedRayon = e.target;
+        e.dataTransfer.effectAllowed = "move";
+    }
+});
+
+rayonsContainer.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(rayonsContainer, e.clientY);
+    if(afterElement == null){
+        rayonsContainer.appendChild(draggedRayon);
+    } else {
+        rayonsContainer.insertBefore(draggedRayon, afterElement);
+    }
+});
+
+function getDragAfterElement(container, y){
+    const draggableElements = [...container.querySelectorAll('.rayon:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if(offset < 0 && offset > closest.offset){
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
