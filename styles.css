@@ -117,3 +117,27 @@ button.btn-deplacer-produit:hover {
 button.btn-deplacer-produit:active {
     cursor: grabbing;
 }
+
+
+/* media queries----------------------
+------------------------------------*/
+@media (max-width: 430px) {
+    .container {
+        padding: 0.5rem;
+    }
+    h1 {
+        font-size: 1.5rem;
+    }
+    h2 {
+        font-size: 1.2rem;
+    }
+    input[type="text"] {
+        font-size: 0.9rem;
+    }
+    .rayon {
+        padding: 0.5rem;
+    }
+    .produit-nom {
+        font-size: 0.9rem;
+    }
+}
