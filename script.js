@@ -22,6 +22,7 @@ ajouterRayonBtn.addEventListener('click', () => {
     }
     const rayon = createRayon(nomRayon);
     rayonsContainer.appendChild(rayon);
+    saveToLocalStorage();
     nomRayonInput.value = '';
 });
 
@@ -72,9 +73,11 @@ function initRayonActions(rayon) {
     const titre = rayon.querySelector('h2');
 
     btnSupprimer.addEventListener('click', () => rayon.remove());
+    saveToLocalStorage();
     btnModifier.addEventListener('click', () => {
         const nouveauNom = prompt('Entrez le nouveau nom du rayon:', titre.textContent);
         if (nouveauNom) titre.textContent = nouveauNom;
+        saveToLocalStorage();
     });
 
     inputProduit.addEventListener('keydown', (e) => {
@@ -89,6 +92,7 @@ function initRayonActions(rayon) {
         }
         addProduit(produitsContainer, nomProduit);
         inputProduit.value = '';
+        saveToLocalStorage();
     });
     
 
@@ -132,9 +136,11 @@ function initProduitActions(produit, container) {
     const nom = produit.querySelector('.produit-nom');
 
     btnSupprimer.addEventListener('click', () => produit.remove());
+    saveToLocalStorage();
     btnModifier.addEventListener('click', () => {
         const nouveauNom = prompt('Entrez le nouveau nom du produit:', nom.textContent);
         if (nouveauNom) nom.textContent = nouveauNom;
+        saveToLocalStorage();
     });
 
     checkbox.addEventListener('change', () => {
@@ -145,6 +151,7 @@ function initProduitActions(produit, container) {
             produit.classList.remove('produit-coche');
             container.prepend(produit);
         }
+        saveToLocalStorage();
     });
 }
 
@@ -164,6 +171,7 @@ rayonsContainer.addEventListener('dragend', () => {
     if (!draggedRayon) return;
     draggedRayon.classList.remove('dragging');
     draggedRayon = null;
+    saveToLocalStorage();
 });
 
 rayonsContainer.addEventListener('dragover', (e) => {
@@ -227,5 +235,57 @@ function initTouchDrag(rayon) {
 
         isDragging = false;
         rayon.classList.remove('dragging');
+        saveToLocalStorage();
     });
 }
+
+/* =========================
+   Gestion du localStorage
+========================= */
+
+function saveToLocalStorage() {
+    const data = { rayons: [] };
+
+    document.querySelectorAll('.rayon').forEach(rayon => {
+        const nomRayon = rayon.querySelector('h2').textContent;
+        const produits = [];
+
+        rayon.querySelectorAll('.produit').forEach(produit => {
+            produits.push({
+                nom: produit.querySelector('.produit-nom').textContent,
+                coche: produit.querySelector('.produit-checkbox').checked
+            });
+        });
+
+        data.rayons.push({ nom: nomRayon, produits });
+    });
+
+    localStorage.setItem('listeCoursesData', JSON.stringify(data));
+}
+
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem('listeCoursesData');
+    if (!saved) return;
+
+    const data = JSON.parse(saved);
+    rayonsContainer.innerHTML = '';
+
+    data.rayons.forEach(rayonData => {
+        const rayon = createRayon(rayonData.nom);
+        rayonsContainer.appendChild(rayon);
+
+        const produitsContainer = rayon.querySelector('.produits-container');
+
+        rayonData.produits.forEach(p => {
+            addProduit(produitsContainer, p.nom);
+            const produit = produitsContainer.lastElementChild;
+            const checkbox = produit.querySelector('.produit-checkbox');
+
+            checkbox.checked = p.coche;
+            if (p.coche) produit.classList.add('produit-coche');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+
