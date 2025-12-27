@@ -24,9 +24,9 @@ body {
 h1 {
     text-align: center;
     margin-bottom: 1rem;
-    background-color: #faf8f8;
+    background-color: #828181;
     border-radius: 5px;
-    color: rgb(7, 7, 98);
+    color: whitesmoke;
 }
 
 h2 {
@@ -113,6 +113,33 @@ textarea {
     opacity: 0.5;
     text-decoration: line-through;
 }
+.produit-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #666;
+    border-radius: 4px;
+    background-color: #efefef;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* état coché */
+.produit-checkbox:checked {
+    background-color: #666;
+    border-color: #666;
+}
+
+/* coche blanche */
+.produit-checkbox:checked::after {
+    content: "✓";
+    color: white;
+    font-size: 14px;
+}
+
 
 button {
     cursor: pointer;
