@@ -27,36 +27,24 @@ function rebuildDOM() {
   });
 }
 
-/* --- LOAD LOCAL OU SHEET --- */
-async function loadInitialData() {
-  let loaded = false;
+/* --- LOAD LOCAL --- */
+function loadFromLocal() {
   const saved = localStorage.getItem('listeCourses');
-  if(saved){
-    try {
-      localData = JSON.parse(saved);
-      rebuildDOM();
-      loaded = true;
-    } catch(e){ console.error("Erreur parsing localStorage", e); }
-  }
+  if (!saved) return false;
+  localData = JSON.parse(saved);
+  rebuildDOM();
+  return true;
+}
 
-  if(!loaded){
-    try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
-      if(Array.isArray(data)){
-        localData = data.map(r => ({
-          id: r.id,
-          nom: r.nom,
-          collapsed: !!r.collapsed,
-          produits: Array.isArray(r.produits) ? r.produits : []
-        }));
-        rebuildDOM();
-        updateLocalStorage(); // sauvegarde locale + backup
-      }
-    } catch(e){
-      console.error("Erreur fetch Google Sheet", e);
-    }
-  }
+/* --- LOAD SERVER --- */
+async function loadFromServer() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    localData = data;
+    rebuildDOM();
+    updateLocalStorage(); // sauvegarde locale
+  } catch(err) { console.error("Erreur load API :", err); }
 }
 
 /* --- CREATE RAYON --- */
@@ -192,7 +180,8 @@ rayonsContainer.addEventListener('dragover', e => {
   e.preventDefault();
   const dragging = rayonsContainer.querySelector('.dragging');
   const after = getAfterElement(rayonsContainer, e.clientY);
-  if(!after) rayonsContainer.appendChild(dragging); else rayonsContainer.insertBefore(dragging, after);
+  if(!after) rayonsContainer.appendChild(dragging);
+  else rayonsContainer.insertBefore(dragging, after);
 });
 
 function getAfterElement(container, y) {
@@ -237,14 +226,29 @@ function initTouchDrag(rayon){
 
 /* --- INIT --- */
 document.addEventListener('DOMContentLoaded', ()=>{
-  loadInitialData();
-});
+  // Chargement local d'abord, sinon serveur
+  if(!loadFromLocal()) loadFromServer();
 
-// Service Worker registration
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+  // Service Worker pour PWA et offline
+  if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('Service Worker enregistré', reg))
       .catch(err => console.error('Erreur enregistrement SW', err));
-  });
-}
+  }
+});
+
+// Ajout rayon par input
+ajouterRayonBtn.addEventListener('click', ()=>{
+  const nom = nomRayonInput.value.trim();
+  if(!nom) return;
+  const rayonObj = { id: crypto.randomUUID(), nom, collapsed: false, produits: [] };
+  localData.push(rayonObj);
+  const rayonEl = createRayon(nom, rayonObj.id);
+  rayonsContainer.appendChild(rayonEl);
+  nomRayonInput.value = '';
+  updateLocalStorage();
+});
+
+nomRayonInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') ajouterRayonBtn.click();
+});
