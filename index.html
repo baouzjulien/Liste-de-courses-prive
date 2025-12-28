@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Liste de courses</title>
 
-  <!-- Manifest -->
+  <!-- Manifest pour PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#141414">
 
-  <!-- CSS -->
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,12 +17,7 @@
 
     <!-- Ajout rayon -->
     <div class="add-rayon">
-      <input
-        type="text"
-        id="nouveau-rayon"
-        placeholder="Ajouter un rayon"
-        autocomplete="off"
-      >
+      <input type="text" id="nouveau-rayon" placeholder="Ajouter un rayon" autocomplete="off">
       <button id="btn-ajouter-rayon">Ajouter</button>
     </div>
 
@@ -32,16 +26,5 @@
   </div>
 
   <script src="script.js"></script>
-
-  <!-- Service Worker registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('Service Worker enregistré', reg))
-          .catch(err => console.error('Erreur enregistrement SW', err));
-      });
-    }
-  </script>
 </body>
 </html>
