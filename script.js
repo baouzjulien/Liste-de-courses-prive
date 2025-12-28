@@ -61,7 +61,8 @@ function initRayonActions(rayon) {
   header.addEventListener('click', e => {
     if (e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
-    updateLocalData();
+    // attendre que le DOM ait appliqué la classe
+    requestAnimationFrame(updateLocalData);
   });
 
   btnSup.addEventListener('click', () => { rayon.remove(); updateLocalData(); });
@@ -154,9 +155,7 @@ function updateLocalData() {
     localData.push({ id: rayon.dataset.id, nom, collapsed, produits });
   });
 
-  // sauvegarde locale instantanée
   localStorage.setItem('listeCourses', JSON.stringify(localData));
-  // sync vers Google Sheet (async)
   saveToServer(localData);
 }
 
