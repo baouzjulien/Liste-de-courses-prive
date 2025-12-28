@@ -37,6 +37,8 @@ h1 {
 .add-rayon input {
   flex: 1;
   padding: 0.3rem;
+  border-radius: 4px;
+  border: solid 1px #ccc;
 }
 
 .add-rayon button {
@@ -125,6 +127,13 @@ h1 {
   margin-top: 0.5rem;
 }
 
+input.nouveau-produit {
+  padding: 0.3rem;
+  border-radius: 4px;
+  border: solid 1px #ccc;
+  width: 100%;
+}
+
 /* --- BOUTONS --- */
 button {
   border: none;
@@ -165,15 +174,14 @@ input {
 
 /* état coché */
 .produit-checkbox:checked {
-  background-color: #000; /* fond noir */
-  border-color: #000;
+  background-color: #666; /* fond noir */
 }
 
 /* coche blanche */
 .produit-checkbox:checked::after {
   content: "✓";
   color: #fff;   /* coche blanche */
-  font-size: 14px;
+  font-size: 12px;
 }
 
 
