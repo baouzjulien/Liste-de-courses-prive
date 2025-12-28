@@ -11,9 +11,10 @@ ajouterRayonBtn.addEventListener('click', () => {
   const rayon = createRayon(nom);
   rayonsContainer.appendChild(rayon);
   nomRayonInput.value = '';
-  save();
+  saveLocal();
+  saveServer();
 });
-nomRayonInput.addEventListener('keydown', e => { if (e.key === 'Enter') ajouterRayonBtn.click(); });
+nomRayonInput.addEventListener('keydown', e => { if(e.key==='Enter') ajouterRayonBtn.click(); });
 
 /* --- CREATE RAYON --- */
 function createRayon(nom) {
@@ -51,33 +52,40 @@ function initRayonActions(rayon) {
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
 
+  // Repli / dépli
   header.addEventListener('click', e => {
-    if (e.target.closest('button')) return;
+    if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
+    saveLocal();
+    saveServer();
   });
 
-  btnSup.addEventListener('click', () => { rayon.remove(); save(); });
+  // Supprimer / modifier rayon
+  btnSup.addEventListener('click', () => { rayon.remove(); saveLocal(); saveServer(); });
   btnMod.addEventListener('click', () => {
     const titre = rayon.querySelector('h2');
     const nv = prompt("Nouveau nom:", titre.firstChild.textContent.trim());
-    if (nv) { titre.firstChild.textContent = nv + ' '; save(); }
+    if(nv) { titre.firstChild.textContent = nv + ' '; saveLocal(); saveServer(); }
   });
 
+  // Ajouter produit
   inputProd.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
+    if(e.key==='Enter') {
       const val = inputProd.value.trim();
-      if (!val) return;
+      if(!val) return;
       addProduit(contProd, val);
       inputProd.value = '';
-      save();
+      saveLocal();
+      saveServer();
     }
   });
 
+  // Drag PC
   rayon.addEventListener('dragstart', () => rayon.classList.add('dragging'));
-  rayon.addEventListener('dragend', () => { rayon.classList.remove('dragging'); save(); });
+  rayon.addEventListener('dragend', () => { rayon.classList.remove('dragging'); saveLocal(); saveServer(); });
 
   btnDrag.addEventListener('mousedown', () => rayon.setAttribute('draggable', 'true'));
-  ['mouseup','mouseleave'].forEach(evt => btnDrag.addEventListener(evt, () => rayon.removeAttribute('draggable')));
+  ['mouseup','mouseleave'].forEach(evt => btnDrag.addEventListener(evt, ()=>rayon.removeAttribute('draggable')));
 }
 
 /* --- PRODUIT --- */
@@ -102,10 +110,10 @@ function addProduit(container, nom) {
   cb.setAttribute('aria-checked', cb.checked);
 
   p.addEventListener('click', e => {
-    if (e.target.closest('button')) return;
+    if(e.target.closest('button')) return;
     e.stopPropagation();
     container.querySelectorAll('.produit-actions').forEach(act => {
-      if (act !== p.querySelector('.produit-actions')) act.style.display = 'none';
+      if(act !== p.querySelector('.produit-actions')) act.style.display = 'none';
     });
     p.querySelector('.produit-actions').style.display = 'inline-block';
   });
@@ -114,111 +122,94 @@ function addProduit(container, nom) {
     cb.setAttribute('aria-checked', cb.checked);
     p.classList.toggle('produit-coche', cb.checked);
     if(cb.checked) container.appendChild(p); else container.prepend(p);
-    save();
+    saveLocal(); saveServer();
   });
 
-  btnSup.addEventListener('click', () => { p.remove(); save(); });
+  btnSup.addEventListener('click', () => { p.remove(); saveLocal(); saveServer(); });
   btnMod.addEventListener('click', () => {
     const nv = prompt("Nouveau nom:", nomSpan.textContent);
-    if (nv) { nomSpan.textContent = nv; save(); }
+    if(nv) { nomSpan.textContent = nv; saveLocal(); saveServer(); }
   });
 
   container.appendChild(p);
 }
 
-/* --- SAVE --- */
-async function save() {
+/* --- LOCAL STORAGE --- */
+function saveLocal() {
   const data = [];
   rayonsContainer.querySelectorAll('.rayon').forEach(rayon => {
     const nom = rayon.querySelector('h2').firstChild.textContent.trim();
     const collapsed = rayon.classList.contains('collapsed');
     const produits = [];
     rayon.querySelectorAll('.produit').forEach(p => {
-      produits.push({ id: p.dataset.id, nom: p.querySelector('.produit-nom').textContent, coche: p.querySelector('.produit-checkbox').checked });
+      produits.push({
+        id: p.dataset.id,
+        nom: p.querySelector('.produit-nom').textContent,
+        coche: p.querySelector('.produit-checkbox').checked
+      });
     });
     data.push({ id: rayon.dataset.id, nom, collapsed, produits });
   });
-
-  try {
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-  } catch(err) { console.error("Erreur save API :", err); }
+  localStorage.setItem('listeCourses', JSON.stringify(data));
 }
 
-/* --- LOAD STABLE --- */
-async function load() {
-  try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-
-    rayonsContainer.innerHTML = ""; // clear all before rebuild
-    data.forEach(r => {
-      const rayon = createRayon(r.nom);
-      rayon.dataset.id = r.id;
-      rayon.classList.toggle('collapsed', r.collapsed);
-
-      const cont = rayon.querySelector('.produits-container');
-      r.produits.forEach(p => {
-        addProduit(cont, p.nom);
-        const last = cont.lastChild;
-        last.dataset.id = p.id;
-        const cb = last.querySelector('.produit-checkbox');
-        cb.checked = p.coche;
-        last.classList.toggle('produit-coche', p.coche);
-        cb.setAttribute('aria-checked', cb.checked);
-      });
-
-      rayonsContainer.appendChild(rayon);
+function loadLocal() {
+  const saved = localStorage.getItem('listeCourses');
+  if(!saved) return;
+  const data = JSON.parse(saved);
+  rayonsContainer.innerHTML = "";
+  data.forEach(r => {
+    const rayon = createRayon(r.nom);
+    rayon.dataset.id = r.id;
+    rayon.classList.toggle('collapsed', r.collapsed);
+    const cont = rayon.querySelector('.produits-container');
+    r.produits.forEach(p => {
+      addProduit(cont, p.nom);
+      const last = cont.lastChild;
+      last.dataset.id = p.id;
+      const cb = last.querySelector('.produit-checkbox');
+      cb.checked = p.coche;
+      last.classList.toggle('produit-coche', p.coche);
+      cb.setAttribute('aria-checked', cb.checked);
     });
-  } catch(err) { console.error("Erreur load API :", err); }
-}
-
-/* --- DRAG PC --- */
-rayonsContainer.addEventListener('dragover', e => {
-  e.preventDefault();
-  const dragging = rayonsContainer.querySelector('.dragging');
-  const after = getAfterElement(rayonsContainer, e.clientY);
-  if (!after) rayonsContainer.appendChild(dragging);
-  else rayonsContainer.insertBefore(dragging, after);
-});
-function getAfterElement(container, y) {
-  return [...container.querySelectorAll('.rayon:not(.dragging)')]
-    .reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height/2;
-      if(offset < 0 && offset > closest.offset) return { offset, element: child };
-      return closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-/* --- DRAG MOBILE --- */
-function initTouchDrag(rayon) {
-  const btn = rayon.querySelector('.btn-deplacer-rayon');
-  let isDragging = false;
-
-  btn.addEventListener('touchstart', e => {
-    if(e.touches.length !== 1) return;
-    isDragging = true;
-    rayon.classList.add('dragging');
-    e.preventDefault();
-  }, { passive:false });
-
-  btn.addEventListener('touchmove', e => {
-    if(!isDragging) return;
-    const touchY = e.touches[0].clientY;
-    const after = getAfterElement(rayonsContainer, touchY);
-    if(!after) rayonsContainer.appendChild(rayon); else rayonsContainer.insertBefore(rayon, after);
-    e.preventDefault();
-  }, { passive:false });
-
-  btn.addEventListener('touchend', () => {
-    if(!isDragging) return;
-    isDragging = false;
-    rayon.classList.remove('dragging');
-    save();
+    rayonsContainer.appendChild(rayon);
   });
 }
 
+/* --- API --- */
+async function saveServer() {
+  try { 
+    const data = JSON.parse(localStorage.getItem('listeCourses') || "[]");
+    await fetch(API_URL, { method:'POST', body: JSON.stringify(data) });
+  } catch(err){ console.error("Erreur save API:", err);}
+}
+
+/* --- SYNC --- */
+async function syncLoop() {
+  try {
+    const res = await fetch(`${API_URL}?ping=1`);
+    const data = await res.json();
+    const timestamp = data.updated;
+    if(timestamp !== lastUpdate){
+      lastUpdate = timestamp;
+      loadServer();
+    }
+  } catch(err){ console.error("Erreur sync:", err);}
+  finally { setTimeout(syncLoop, 2000); }
+}
+
+async function loadServer() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    localStorage.setItem('listeCourses', JSON.stringify(data));
+    loadLocal();
+  } catch(err){ console.error("Erreur load API:", err);}
+}
+
 /* --- INIT --- */
+let lastUpdate = 0;
 document.addEventListener('DOMContentLoaded', () => {
-  load();
+  loadLocal();   // Chargement local immédiat
+  syncLoop();    // Long-polling serveur
 });
