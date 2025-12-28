@@ -54,7 +54,6 @@ function initRayonActions(rayon) {
   header.addEventListener('click', e => {
     if (e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
-    save(); // sauvegarde l'état collapsed immédiatement
   });
 
   btnSup.addEventListener('click', () => { rayon.remove(); save(); });
@@ -113,7 +112,8 @@ function addProduit(container, nom) {
 
   cb.addEventListener('change', () => {
     cb.setAttribute('aria-checked', cb.checked);
-    if (cb.checked) container.appendChild(p); else container.prepend(p);
+    p.classList.toggle('produit-coche', cb.checked);
+    if(cb.checked) container.appendChild(p); else container.prepend(p);
     save();
   });
 
@@ -126,7 +126,7 @@ function addProduit(container, nom) {
   container.appendChild(p);
 }
 
-/* --- SAVE / SYNC --- */
+/* --- SAVE --- */
 async function save() {
   const data = [];
   rayonsContainer.querySelectorAll('.rayon').forEach(rayon => {
@@ -139,22 +139,26 @@ async function save() {
     data.push({ id: rayon.dataset.id, nom, collapsed, produits });
   });
 
-  try { await fetch(API_URL, { method:'POST', body:JSON.stringify(data) }); }
-  catch(err){ console.error("Erreur save API :", err); }
+  try {
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+  } catch(err) { console.error("Erreur save API :", err); }
 }
 
-async function loadFromServer() {
+/* --- LOAD STABLE --- */
+async function load() {
   try {
     const res = await fetch(API_URL);
     const data = await res.json();
-    rayonsContainer.innerHTML = ''; // reset
+
+    rayonsContainer.innerHTML = ""; // clear all before rebuild
     data.forEach(r => {
       const rayon = createRayon(r.nom);
       rayon.dataset.id = r.id;
       rayon.classList.toggle('collapsed', r.collapsed);
+
       const cont = rayon.querySelector('.produits-container');
       r.produits.forEach(p => {
-        const prod = addProduit(cont, p.nom);
+        addProduit(cont, p.nom);
         const last = cont.lastChild;
         last.dataset.id = p.id;
         const cb = last.querySelector('.produit-checkbox');
@@ -162,28 +166,59 @@ async function loadFromServer() {
         last.classList.toggle('produit-coche', p.coche);
         cb.setAttribute('aria-checked', cb.checked);
       });
+
       rayonsContainer.appendChild(rayon);
     });
-  } catch(err){ console.error("Erreur load API :", err); }
+  } catch(err) { console.error("Erreur load API :", err); }
 }
 
-/* --- LONG-POLLING SYNC --- */
-let lastUpdate = 0;
-async function syncLoop() {
-  try {
-    const res = await fetch(`${API_URL}?ping=1`);
-    const data = await res.json();
-    const timestamp = data.updated;
-    if(timestamp !== lastUpdate) {
-      lastUpdate = timestamp;
-      await loadFromServer();
-    }
-  } catch(err){ console.error("Erreur sync :", err); }
-  finally { setTimeout(syncLoop, 2000); }
+/* --- DRAG PC --- */
+rayonsContainer.addEventListener('dragover', e => {
+  e.preventDefault();
+  const dragging = rayonsContainer.querySelector('.dragging');
+  const after = getAfterElement(rayonsContainer, e.clientY);
+  if (!after) rayonsContainer.appendChild(dragging);
+  else rayonsContainer.insertBefore(dragging, after);
+});
+function getAfterElement(container, y) {
+  return [...container.querySelectorAll('.rayon:not(.dragging)')]
+    .reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height/2;
+      if(offset < 0 && offset > closest.offset) return { offset, element: child };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+/* --- DRAG MOBILE --- */
+function initTouchDrag(rayon) {
+  const btn = rayon.querySelector('.btn-deplacer-rayon');
+  let isDragging = false;
+
+  btn.addEventListener('touchstart', e => {
+    if(e.touches.length !== 1) return;
+    isDragging = true;
+    rayon.classList.add('dragging');
+    e.preventDefault();
+  }, { passive:false });
+
+  btn.addEventListener('touchmove', e => {
+    if(!isDragging) return;
+    const touchY = e.touches[0].clientY;
+    const after = getAfterElement(rayonsContainer, touchY);
+    if(!after) rayonsContainer.appendChild(rayon); else rayonsContainer.insertBefore(rayon, after);
+    e.preventDefault();
+  }, { passive:false });
+
+  btn.addEventListener('touchend', () => {
+    if(!isDragging) return;
+    isDragging = false;
+    rayon.classList.remove('dragging');
+    save();
+  });
 }
 
 /* --- INIT --- */
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadFromServer();
-  syncLoop();
+document.addEventListener('DOMContentLoaded', () => {
+  load();
 });
