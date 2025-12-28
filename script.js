@@ -6,17 +6,7 @@ const nomRayonInput = document.getElementById('nouveau-rayon');
 
 let localData = [];
 let lastUpdate = 0;
-let pendingUpdate = false;
-
-/* --- DEBOUNCE UPDATE --- */
-function scheduleUpdate() {
-  if (pendingUpdate) return;
-  pendingUpdate = true;
-  requestAnimationFrame(() => {
-    updateLocalData();
-    pendingUpdate = false;
-  });
-}
+let saveTimeout = null;
 
 /* --- AJOUT RAYON --- */
 ajouterRayonBtn.addEventListener('click', () => {
@@ -25,15 +15,19 @@ ajouterRayonBtn.addEventListener('click', () => {
   const rayon = createRayon(nom);
   rayonsContainer.appendChild(rayon);
   nomRayonInput.value = '';
-  scheduleUpdate();
+  updateLocalDataDebounced();
 });
-nomRayonInput.addEventListener('keydown', e => { if (e.key === 'Enter') ajouterRayonBtn.click(); });
+
+nomRayonInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') ajouterRayonBtn.click();
+});
 
 /* --- CREATE RAYON --- */
-function createRayon(nom) {
+function createRayon(nom, id=null, collapsed=false, lastModified=null) {
   const rayon = document.createElement('div');
   rayon.className = 'rayon';
-  rayon.dataset.id = crypto.randomUUID();
+  rayon.dataset.id = id || crypto.randomUUID();
+  rayon.dataset.lastModified = lastModified || Date.now();
   rayon.setAttribute('draggable', 'true');
 
   rayon.innerHTML = `
@@ -51,8 +45,11 @@ function createRayon(nom) {
     </div>
   `;
 
+  rayon.classList.toggle('collapsed', collapsed);
+
   initRayonActions(rayon);
   initTouchDrag(rayon);
+
   return rayon;
 }
 
@@ -68,14 +65,20 @@ function initRayonActions(rayon) {
   header.addEventListener('click', e => {
     if (e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
-    scheduleUpdate();
+    rayon.dataset.lastModified = Date.now();
+    updateLocalDataDebounced();
   });
 
-  btnSup.addEventListener('click', () => { rayon.remove(); scheduleUpdate(); });
+  btnSup.addEventListener('click', () => { rayon.remove(); updateLocalDataDebounced(); });
+
   btnMod.addEventListener('click', () => {
     const titre = rayon.querySelector('h2');
     const nv = prompt("Nouveau nom:", titre.textContent.trim());
-    if (nv) { titre.textContent = nv; scheduleUpdate(); }
+    if (nv) {
+      titre.textContent = nv;
+      rayon.dataset.lastModified = Date.now();
+      updateLocalDataDebounced();
+    }
   });
 
   inputProd.addEventListener('keydown', e => {
@@ -84,22 +87,28 @@ function initRayonActions(rayon) {
       if (!val) return;
       addProduit(contProd, val);
       inputProd.value = '';
-      scheduleUpdate();
+      rayon.dataset.lastModified = Date.now();
+      updateLocalDataDebounced();
     }
   });
 
   rayon.addEventListener('dragstart', () => rayon.classList.add('dragging'));
-  rayon.addEventListener('dragend', () => { rayon.classList.remove('dragging'); scheduleUpdate(); });
+  rayon.addEventListener('dragend', () => {
+    rayon.classList.remove('dragging');
+    rayon.dataset.lastModified = Date.now();
+    updateLocalDataDebounced();
+  });
 
   btnDrag.addEventListener('mousedown', () => rayon.setAttribute('draggable', 'true'));
   ['mouseup','mouseleave'].forEach(evt => btnDrag.addEventListener(evt, () => rayon.removeAttribute('draggable')));
 }
 
 /* --- PRODUIT --- */
-function addProduit(container, nom, id=null, coche=false) {
+function addProduit(container, nom, id=null, coche=false, lastModified=null) {
   const p = document.createElement('div');
   p.className = 'produit';
   p.dataset.id = id || crypto.randomUUID();
+  p.dataset.lastModified = lastModified || Date.now();
 
   p.innerHTML = `
     <input type="checkbox" class="produit-checkbox" aria-label="Produit ${nom}">
@@ -131,20 +140,30 @@ function addProduit(container, nom, id=null, coche=false) {
   cb.addEventListener('change', () => {
     cb.setAttribute('aria-checked', cb.checked);
     p.classList.toggle('produit-coche', cb.checked);
+    p.dataset.lastModified = Date.now();
     if(cb.checked) container.appendChild(p); else container.prepend(p);
-    scheduleUpdate();
+    updateLocalDataDebounced();
   });
 
-  btnSup.addEventListener('click', () => { p.remove(); scheduleUpdate(); });
+  btnSup.addEventListener('click', () => { p.remove(); updateLocalDataDebounced(); });
   btnMod.addEventListener('click', () => {
     const nv = prompt("Nouveau nom:", nomSpan.textContent);
-    if (nv) { nomSpan.textContent = nv; scheduleUpdate(); }
+    if (nv) {
+      nomSpan.textContent = nv;
+      p.dataset.lastModified = Date.now();
+      updateLocalDataDebounced();
+    }
   });
 
   container.appendChild(p);
 }
 
-/* --- LOCALSTORAGE + API SYNC --- */
+/* --- DEBOUNCED LOCAL + SERVER SAVE --- */
+function updateLocalDataDebounced() {
+  if(saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(updateLocalData, 300); // regroupe les changements rapides
+}
+
 function updateLocalData() {
   localData = [];
   rayonsContainer.querySelectorAll('.rayon').forEach(rayon => {
@@ -155,17 +174,30 @@ function updateLocalData() {
       produits.push({
         id: p.dataset.id,
         nom: p.querySelector('.produit-nom').textContent,
-        coche: p.querySelector('.produit-checkbox').checked
+        coche: p.querySelector('.produit-checkbox').checked,
+        lastModified: Number(p.dataset.lastModified)
       });
     });
-    localData.push({ id: rayon.dataset.id, nom, collapsed, produits });
+    localData.push({
+      id: rayon.dataset.id,
+      nom,
+      collapsed,
+      lastModified: Number(rayon.dataset.lastModified),
+      produits
+    });
   });
 
   localStorage.setItem('listeCourses', JSON.stringify(localData));
-  saveToServer(localData);
+  saveToServerDebounced(localData);
 }
 
-/* --- SAVE API --- */
+/* --- SAVE SERVER DEBOUNCED --- */
+let serverTimeout = null;
+function saveToServerDebounced(data) {
+  if(serverTimeout) clearTimeout(serverTimeout);
+  serverTimeout = setTimeout(() => saveToServer(data), 500);
+}
+
 async function saveToServer(data) {
   try {
     await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
@@ -194,13 +226,9 @@ async function loadFromServer() {
 function rebuildFromData(data) {
   rayonsContainer.innerHTML = "";
   data.forEach(r => {
-    const rayon = createRayon(r.nom);
-    rayon.dataset.id = r.id;
-    rayon.classList.toggle('collapsed', r.collapsed);
-
+    const rayon = createRayon(r.nom, r.id, r.collapsed, r.lastModified);
     const cont = rayon.querySelector('.produits-container');
-    r.produits.forEach(p => addProduit(cont, p.nom, p.id, p.coche));
-
+    r.produits.forEach(p => addProduit(cont, p.nom, p.id, p.coche, p.lastModified));
     rayonsContainer.appendChild(rayon);
   });
   localData = data;
@@ -229,6 +257,7 @@ rayonsContainer.addEventListener('dragover', e => {
   if (!after) rayonsContainer.appendChild(dragging);
   else rayonsContainer.insertBefore(dragging, after);
 });
+
 function getAfterElement(container, y) {
   return [...container.querySelectorAll('.rayon:not(.dragging)')]
     .reduce((closest, child) => {
@@ -255,7 +284,8 @@ function initTouchDrag(rayon) {
     if(!isDragging) return;
     const touchY = e.touches[0].clientY;
     const after = getAfterElement(rayonsContainer, touchY);
-    if(!after) rayonsContainer.appendChild(rayon); else rayonsContainer.insertBefore(rayon, after);
+    if(!after) rayonsContainer.appendChild(rayon);
+    else rayonsContainer.insertBefore(rayon, after);
     e.preventDefault();
   }, { passive:false });
 
@@ -263,7 +293,8 @@ function initTouchDrag(rayon) {
     if(!isDragging) return;
     isDragging = false;
     rayon.classList.remove('dragging');
-    scheduleUpdate();
+    rayon.dataset.lastModified = Date.now();
+    updateLocalDataDebounced();
   });
 }
 
