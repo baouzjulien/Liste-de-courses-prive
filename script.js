@@ -249,7 +249,7 @@ async function syncLoop() {
   } catch (err) {
     console.error("Erreur sync :", err);
   } finally {
-    setTimeout(syncLoop, 2000);
+    setTimeout(syncLoop, 1000);
   }
 }
 
