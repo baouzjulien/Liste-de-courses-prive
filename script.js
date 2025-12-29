@@ -1,61 +1,82 @@
+/* =================================================
+   CONSTANTES ET ÉLÉMENTS DOM
+================================================= */
 const API_URL = "https://script.google.com/macros/s/AKfycbyt1rnaburyDKblXGC0BUKh6-1JLtGcOhxrZiNe8Bye09enlV_EU7_37WHFz4Ymo8_W/exec";
 const rayonsContainer = document.getElementById('rayons-container');
 const ajouterRayonBtn = document.getElementById('btn-ajouter-rayon');
 const nomRayonInput = document.getElementById('nouveau-rayon');
 
-let localData = [];
+let localData = []; // Structure de données locale (rayons + produits)
 
-/* --- UTILITAIRES --- */
+/* =================================================
+   UTILITAIRES
+================================================= */
+
+// Sauvegarde locale + serveur
 function updateLocalStorage() {
   localStorage.setItem('listeCourses', JSON.stringify(localData));
   saveToServer(localData); // backup asynchrone
 }
 
+// Sauvegarde côté serveur (POST JSON)
 async function saveToServer(data) {
   try {
     await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
   } catch(err) { console.error("Erreur save API :", err); }
 }
 
+// Reconstruit complètement le DOM à partir de localData
 function rebuildDOM() {
   rayonsContainer.innerHTML = "";
   localData.forEach(r => {
-  const rayon = createRayon(r.nom, r.id, r.collapsed);
-  const cont = rayon.querySelector('.produits-container');
-  r.produits
-  .slice()
-  .sort((a, b) => a.coche - b.coche) // décochés (false=0) en haut
-  .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
-  rayonsContainer.appendChild(rayon);
+    const rayon = createRayon(r.nom, r.id, r.collapsed);
+    const cont = rayon.querySelector('.produits-container');
+
+    // Tri : produits décochés en haut
+    r.produits
+      .slice()
+      .sort((a, b) => a.coche - b.coche)
+      .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
+
+    rayonsContainer.appendChild(rayon);
   });
 }
 
-/* --- LOAD LOCAL --- */
+/* =================================================
+   CHARGEMENT DES DONNÉES
+================================================= */
+
+// Charge depuis le localStorage
 function loadFromLocal() {
   const saved = localStorage.getItem('listeCourses');
   if (!saved) return false;
-    localData = JSON.parse(saved);
-    rebuildDOM();
-    return true;
+  localData = JSON.parse(saved);
+  rebuildDOM();
+  return true;
 }
 
-/* --- LOAD SERVER --- */
+// Charge depuis le serveur (API Google Apps Script)
 async function loadFromServer() {
   try {
     const res = await fetch(API_URL);
     const data = await res.json();
     localData = data;
     rebuildDOM();
-    updateLocalStorage(); // sauvegarde locale
+    updateLocalStorage(); // synchronisation locale
   } catch(err) { console.error("Erreur load API :", err); }
 }
 
-/* --- CREATE RAYON --- */
+/* =================================================
+   COMPOSANT : RAYON
+================================================= */
+
+// Crée un rayon HTML à partir d’un objet
 function createRayon(nom, id=null, collapsed=false) {
   const rayon = document.createElement('div');
   rayon.className = 'rayon';
   rayon.dataset.id = id || crypto.randomUUID();
   rayon.setAttribute('draggable', 'true');
+
   rayon.innerHTML = `
     <div class="rayon-header">
       <button class="btn-deplacer-rayon" aria-label="Déplacer le rayon">☰</button>
@@ -70,6 +91,7 @@ function createRayon(nom, id=null, collapsed=false) {
       <input type="text" class="nouveau-produit" placeholder="Ajouter un produit">
     </div>
   `;
+
   if(collapsed) rayon.classList.add('collapsed');
 
   initRayonActions(rayon);
@@ -77,7 +99,7 @@ function createRayon(nom, id=null, collapsed=false) {
   return rayon;
 }
 
-/* --- INIT ACTIONS RAYON --- */
+/* --- Actions sur un rayon (clic / modifier / supprimer / ajout produit) --- */
 function initRayonActions(rayon) {
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
@@ -85,6 +107,7 @@ function initRayonActions(rayon) {
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
 
+  // Collapse / expand du rayon
   header.addEventListener('click', e => {
     if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
@@ -92,6 +115,7 @@ function initRayonActions(rayon) {
     if(r) { r.collapsed = rayon.classList.contains('collapsed'); updateLocalStorage(); }
   });
 
+  // Supprimer rayon
   btnSup.addEventListener('click', () => {
     const idx = localData.findIndex(r => r.id === rayon.dataset.id);
     if(idx !== -1) localData.splice(idx, 1);
@@ -99,6 +123,7 @@ function initRayonActions(rayon) {
     updateLocalStorage();
   });
 
+  // Modifier nom rayon
   btnMod.addEventListener('click', () => {
     const titre = rayon.querySelector('h2');
     const nv = prompt("Nouveau nom:", titre.textContent.trim());
@@ -110,6 +135,7 @@ function initRayonActions(rayon) {
     }
   });
 
+  // Ajouter produit
   inputProd.addEventListener('keydown', e => {
     if(e.key !== 'Enter') return;
     const val = inputProd.value.trim();
@@ -123,11 +149,14 @@ function initRayonActions(rayon) {
   });
 }
 
-/* --- PRODUIT --- */
+/* =================================================
+   COMPOSANT : PRODUIT
+================================================= */
 function addProduit(container, nom, id=null, coche=false) {
   const p = document.createElement('div');
   p.className = 'produit';
   p.dataset.id = id || crypto.randomUUID();
+
   p.innerHTML = `
     <input type="checkbox" class="produit-checkbox" aria-label="Produit ${nom}">
     <span class="produit-nom">${nom}</span>
@@ -136,12 +165,14 @@ function addProduit(container, nom, id=null, coche=false) {
       <button class="btn-supprimer-produit" aria-label="Supprimer le produit">x</button>
     </div>
   `;
+
   const cb = p.querySelector('.produit-checkbox');
   const nomSpan = p.querySelector('.produit-nom');
   cb.checked = coche;
   p.classList.toggle('produit-coche', coche);
   cb.setAttribute('aria-checked', cb.checked);
 
+  // Changement état coché
   cb.addEventListener('change', () => {
     const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
     if(r){
@@ -154,6 +185,7 @@ function addProduit(container, nom, id=null, coche=false) {
     updateLocalStorage();
   });
 
+  // Supprimer produit
   p.querySelector('.btn-supprimer-produit').addEventListener('click', () => {
     const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
     if(r) r.produits = r.produits.filter(x => x.id !== p.dataset.id);
@@ -161,6 +193,7 @@ function addProduit(container, nom, id=null, coche=false) {
     updateLocalStorage();
   });
 
+  // Modifier produit
   p.querySelector('.btn-modifier-produit').addEventListener('click', () => {
     const nv = prompt("Nouveau nom:", nomSpan.textContent);
     if(nv){
@@ -177,7 +210,9 @@ function addProduit(container, nom, id=null, coche=false) {
   container.appendChild(p);
 }
 
-/* --- DRAG PC --- */
+/* =================================================
+   DRAG & DROP (PC)
+================================================= */
 rayonsContainer.addEventListener('dragover', e => {
   e.preventDefault();
   const dragging = rayonsContainer.querySelector('.dragging');
@@ -196,7 +231,9 @@ function getAfterElement(container, y) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-/* --- DRAG MOBILE --- */
+/* =================================================
+   DRAG MOBILE / TOUCH
+================================================= */
 function initTouchDrag(rayon){
   const btn = rayon.querySelector('.btn-deplacer-rayon');
   let isDragging = false;
@@ -209,7 +246,8 @@ function initTouchDrag(rayon){
   btn.addEventListener('touchmove', e=>{
     if(!isDragging) return;
     const after = getAfterElement(rayonsContainer, e.touches[0].clientY);
-    if(!after) rayonsContainer.appendChild(rayon); else rayonsContainer.insertBefore(rayon, after);
+    if(!after) rayonsContainer.appendChild(rayon); 
+    else rayonsContainer.insertBefore(rayon, after);
     e.preventDefault();
   }, {passive:false});
 
@@ -217,6 +255,8 @@ function initTouchDrag(rayon){
     if(!isDragging) return;
     isDragging=false;
     rayon.classList.remove('dragging');
+
+    // Sauvegarde nouvel ordre
     const idx = localData.findIndex(r=>r.id===rayon.dataset.id);
     if(idx!==-1){
       const newOrder = [...rayonsContainer.querySelectorAll('.rayon')].map(r=>r.dataset.id);
@@ -226,12 +266,14 @@ function initTouchDrag(rayon){
   });
 }
 
-/* --- INIT --- */
+/* =================================================
+   INITIALISATION
+================================================= */
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Chargement local d'abord, sinon serveur
+  // Chargement : localStorage d'abord, sinon serveur
   if(!loadFromLocal()) loadFromServer();
 
-  // Service Worker pour PWA et offline
+  // Service Worker PWA (offline)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('Service Worker enregistré', reg))
@@ -239,7 +281,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 
-// Ajout rayon par input
+/* =================================================
+   ÉVÉNEMENTS GÉNÉRAUX : AJOUT RAYON
+================================================= */
 ajouterRayonBtn.addEventListener('click', ()=>{
   const nom = nomRayonInput.value.trim();
   if(!nom) return;

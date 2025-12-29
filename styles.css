@@ -1,3 +1,7 @@
+/* =================================================
+   BASE / RESET
+   Règles globales appliquées à tout le document
+================================================= */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,6 +14,21 @@ body {
   color: #333;
 }
 
+button {
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button,
+input {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+/* =================================================
+   LAYOUT GÉNÉRAL
+================================================= */
 .container {
   max-width: 600px;
   margin: 1rem auto;
@@ -27,7 +46,9 @@ h1 {
   border-radius: 5px;
 }
 
-/* --- AJOUT RAYON --- */
+/* =================================================
+   COMPOSANT : AJOUT RAYON
+================================================= */
 .add-rayon {
   display: flex;
   gap: 0.5rem;
@@ -46,7 +67,9 @@ h1 {
   cursor: pointer;
 }
 
-/* --- RAYON --- */
+/* =================================================
+   COMPOSANT : RAYON
+================================================= */
 .rayon {
   background: #f4f3f3;
   padding: 0.5rem;
@@ -54,6 +77,7 @@ h1 {
   border-radius: 5px;
 }
 
+/* --- États du rayon --- */
 .rayon.dragging {
   opacity: 0.6;
   transform: scale(0.97);
@@ -64,11 +88,20 @@ h1 {
   display: none;
 }
 
+/* --- Structure du rayon --- */
 .rayon-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+}
+
+.rayon-header h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 0.5rem;
 }
 
 .btn-deplacer-rayon {
@@ -86,14 +119,6 @@ h1 {
   cursor: grabbing;
 }
 
-.rayon-header h2 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  flex: 1;
-  gap: 0.5rem;
-}
-
 .rayon-footer {
   display: flex;
   gap: 0.5rem;
@@ -105,7 +130,18 @@ h1 {
   padding: 0.3rem;
 }
 
-/* --- PRODUITS --- */
+/* Actions du rayon (éditer / supprimer) */
+.rayon-actions button {
+  display: none;
+  background-color: #f4f3f3;
+  margin: 0 2px;
+  color: #666;
+  font-size: 1rem;
+}
+
+/* =================================================
+   COMPOSANT : PRODUIT
+================================================= */
 .produit {
   display: flex;
   align-items: center;
@@ -113,20 +149,22 @@ h1 {
   border-bottom: 1px solid #dcdcdc;
 }
 
+.produits-container {
+  margin-top: 0.5rem;
+}
+
 .produit-nom {
   margin-left: 5px;
   flex: 1;
 }
 
-.produit-coche .produit-nom{
+/* --- États du produit --- */
+.produit-coche .produit-nom {
   text-decoration: line-through;
   opacity: 0.5;
 }
 
-.produits-container {
-  margin-top: 0.5rem;
-}
-
+/* Champ ajout produit */
 input.nouveau-produit {
   padding: 0.3rem;
   border-radius: 4px;
@@ -134,30 +172,18 @@ input.nouveau-produit {
   width: 100%;
 }
 
-/* --- BOUTONS --- */
-button {
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.rayon-actions button,
+/* Actions produit */
 .produit-actions button {
   display: none;
   background-color: #f4f3f3;
-  margin: 0 2px; 
+  margin: 0 2px;
   color: #666;
   font-size: 1rem;
 }
 
-button,
-input {
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
-}
-
-
-/* Checkbox */
+/* =================================================
+   COMPOSANT : CHECKBOX PERSONNALISÉE
+================================================= */
 .produit-checkbox {
   appearance: none;
   -webkit-appearance: none;
@@ -172,26 +198,27 @@ input {
   justify-content: center;
 }
 
-/* état coché */
 .produit-checkbox:checked {
-  background-color: #666; /* fond noir */
+  background-color: #666;
 }
 
-/* coche blanche */
 .produit-checkbox:checked::after {
   content: "✓";
-  color: #fff;   /* coche blanche */
+  color: #fff;
   font-size: 12px;
 }
 
-
-/* Hover PC */
+/* =================================================
+   INTERACTIONS (PC)
+================================================= */
 .rayon:hover .rayon-actions button,
 .produit:hover .produit-actions button {
   display: inline-block;
 }
 
-/* --- RESPONSIVE --- */
+/* =================================================
+   RESPONSIVE
+================================================= */
 @media (max-width: 430px) {
   .rayon-footer {
     flex-direction: column;
