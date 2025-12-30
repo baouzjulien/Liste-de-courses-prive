@@ -6,36 +6,50 @@ const rayonsContainer = document.getElementById('rayons-container');
 const ajouterRayonBtn = document.getElementById('btn-ajouter-rayon');
 const nomRayonInput = document.getElementById('nouveau-rayon');
 
-let localData = []; // Structure de données locale (rayons + produits)
+let localData = []; // Données locales : rayons + produits
 
 /* =================================================
-   UTILITAIRES
+   SAUVEGARDE LOCALE + SERVEUR (DEBOUNCE)
 ================================================= */
 
-// Sauvegarde locale + serveur
+// Sauvegarde locale immédiate + serveur décalé
 function updateLocalStorage() {
   localStorage.setItem('listeCourses', JSON.stringify(localData));
-  saveToServer(localData); // backup asynchrone
+  debounceSaveServer();
 }
 
-// Sauvegarde côté serveur (POST JSON)
+// Debounce : ne sauvegarde serveur qu'une fois après 1s d'inactivité
+let saveTimeout = null;
+function debounceSaveServer(delay = 1000) {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => saveToServer(localData), delay);
+}
+
+// Sauvegarde côté serveur
 async function saveToServer(data) {
   try {
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-  } catch(err) { console.error("Erreur save API :", err); }
+    await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  } catch(err) {
+    console.error("Erreur save API :", err);
+  }
 }
 
-// Reconstruit complètement le DOM à partir de localData
+/* =================================================
+   REBUILD DOM
+================================================= */
 function rebuildDOM() {
   rayonsContainer.innerHTML = "";
   localData.forEach(r => {
     const rayon = createRayon(r.nom, r.id, r.collapsed);
     const cont = rayon.querySelector('.produits-container');
 
-    // Tri : produits décochés en haut
+    // Tri produits décochés en haut
     r.produits
       .slice()
-      .sort((a, b) => a.coche - b.coche)
+      .sort((a,b) => a.coche - b.coche)
       .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
 
     rayonsContainer.appendChild(rayon);
@@ -45,8 +59,6 @@ function rebuildDOM() {
 /* =================================================
    CHARGEMENT DES DONNÉES
 ================================================= */
-
-// Charge depuis le localStorage
 function loadFromLocal() {
   const saved = localStorage.getItem('listeCourses');
   if (!saved) return false;
@@ -55,27 +67,26 @@ function loadFromLocal() {
   return true;
 }
 
-// Charge depuis le serveur (API Google Apps Script)
 async function loadFromServer() {
   try {
     const res = await fetch(API_URL);
     const data = await res.json();
     localData = data;
     rebuildDOM();
-    updateLocalStorage(); // synchronisation locale
-  } catch(err) { console.error("Erreur load API :", err); }
+    updateLocalStorage(); // synchronisation locale + serveur
+  } catch(err) {
+    console.error("Erreur load API :", err);
+  }
 }
 
 /* =================================================
-   COMPOSANT : RAYON
+   COMPOSANT RAYON
 ================================================= */
-
-// Crée un rayon HTML à partir d’un objet
 function createRayon(nom, id=null, collapsed=false) {
   const rayon = document.createElement('div');
   rayon.className = 'rayon';
   rayon.dataset.id = id || crypto.randomUUID();
-  rayon.setAttribute('draggable', 'true');
+  rayon.setAttribute('draggable','true');
 
   rayon.innerHTML = `
     <div class="rayon-header">
@@ -99,49 +110,51 @@ function createRayon(nom, id=null, collapsed=false) {
   return rayon;
 }
 
-/* --- Actions sur un rayon (clic / modifier / supprimer / ajout produit) --- */
-function initRayonActions(rayon) {
+/* =================================================
+   ACTIONS SUR RAYON
+================================================= */
+function initRayonActions(rayon){
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
   const btnMod = rayon.querySelector('.btn-modifier-rayon');
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
 
-  // Collapse / expand du rayon
-  header.addEventListener('click', e => {
+  // Collapse / expand
+  header.addEventListener('click', e=>{
     if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
-    const r = localData.find(r => r.id === rayon.dataset.id);
+    const r = localData.find(r=>r.id===rayon.dataset.id);
     if(r) { r.collapsed = rayon.classList.contains('collapsed'); updateLocalStorage(); }
   });
 
   // Supprimer rayon
-  btnSup.addEventListener('click', () => {
-    const idx = localData.findIndex(r => r.id === rayon.dataset.id);
-    if(idx !== -1) localData.splice(idx, 1);
+  btnSup.addEventListener('click', ()=>{
+    const idx = localData.findIndex(r=>r.id===rayon.dataset.id);
+    if(idx!==-1) localData.splice(idx,1);
     rayon.remove();
     updateLocalStorage();
   });
 
   // Modifier nom rayon
-  btnMod.addEventListener('click', () => {
+  btnMod.addEventListener('click', ()=>{
     const titre = rayon.querySelector('h2');
     const nv = prompt("Nouveau nom:", titre.textContent.trim());
-    if(nv) {
+    if(nv){
       titre.textContent = nv;
-      const r = localData.find(r => r.id === rayon.dataset.id);
+      const r = localData.find(r=>r.id===rayon.dataset.id);
       if(r) r.nom = nv;
       updateLocalStorage();
     }
   });
 
   // Ajouter produit
-  inputProd.addEventListener('keydown', e => {
-    if(e.key !== 'Enter') return;
+  inputProd.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
     const val = inputProd.value.trim();
     if(!val) return;
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    const pObj = { id: crypto.randomUUID(), nom: val, coche: false };
+    const r = localData.find(r=>r.id===rayon.dataset.id);
+    const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
     if(r) r.produits.push(pObj);
     addProduit(contProd, val, pObj.id);
     inputProd.value = '';
@@ -150,12 +163,12 @@ function initRayonActions(rayon) {
 }
 
 /* =================================================
-   COMPOSANT : PRODUIT
+   COMPOSANT PRODUIT
 ================================================= */
-function addProduit(container, nom, id=null, coche=false) {
+function addProduit(container, nom, id=null, coche=false){
   const p = document.createElement('div');
-  p.className = 'produit';
-  p.dataset.id = id || crypto.randomUUID();
+  p.className='produit';
+  p.dataset.id = id||crypto.randomUUID();
 
   p.innerHTML = `
     <input type="checkbox" class="produit-checkbox" aria-label="Produit ${nom}">
@@ -173,10 +186,10 @@ function addProduit(container, nom, id=null, coche=false) {
   cb.setAttribute('aria-checked', cb.checked);
 
   // Changement état coché
-  cb.addEventListener('change', () => {
-    const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
+  cb.addEventListener('change', ()=>{
+    const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
     if(r){
-      const prod = r.produits.find(x => x.id === p.dataset.id);
+      const prod = r.produits.find(x=>x.id===p.dataset.id);
       if(prod){
         prod.coche = cb.checked;
         p.classList.toggle('produit-coche', cb.checked);
@@ -186,21 +199,21 @@ function addProduit(container, nom, id=null, coche=false) {
   });
 
   // Supprimer produit
-  p.querySelector('.btn-supprimer-produit').addEventListener('click', () => {
-    const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
-    if(r) r.produits = r.produits.filter(x => x.id !== p.dataset.id);
+  p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
+    const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
+    if(r) r.produits = r.produits.filter(x=>x.id!==p.dataset.id);
     p.remove();
     updateLocalStorage();
   });
 
   // Modifier produit
-  p.querySelector('.btn-modifier-produit').addEventListener('click', () => {
+  p.querySelector('.btn-modifier-produit').addEventListener('click', ()=>{
     const nv = prompt("Nouveau nom:", nomSpan.textContent);
     if(nv){
       nomSpan.textContent = nv;
-      const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
+      const r = localData.find(r=>r.id===p.dataset.id);
       if(r){
-        const prod = r.produits.find(x => x.id === p.dataset.id);
+        const prod = r.produits.find(x=>x.id===p.dataset.id);
         if(prod) prod.nom = nv;
       }
       updateLocalStorage();
@@ -211,73 +224,66 @@ function addProduit(container, nom, id=null, coche=false) {
 }
 
 /* =================================================
-   DRAG & DROP (PC)
+   DRAG & DROP PC
 ================================================= */
-// Gestion du dragstart / dragend
-rayonsContainer.addEventListener('dragstart', e => {
-  e.target.classList.add('dragging');
-});
-rayonsContainer.addEventListener('dragend', e => {
+// Drag start / end
+rayonsContainer.addEventListener('dragstart', e=> e.target.classList.add('dragging'));
+rayonsContainer.addEventListener('dragend', e=>{
   e.target.classList.remove('dragging');
+  // MAJ ordre localData après drag
+  const idx = localData.findIndex(r=>r.id===e.target.dataset.id);
+  if(idx!==-1){
+    const newOrder = [...rayonsContainer.querySelectorAll('.rayon')].map(r=>r.dataset.id);
+    localData.sort((a,b)=>newOrder.indexOf(a.id)-newOrder.indexOf(b.id));
+    updateLocalStorage();
+  }
 });
-// Gestion du dragover pour le repositionnement
-rayonsContainer.addEventListener('dragover', e => {
+
+// Drag over : repositionnement
+rayonsContainer.addEventListener('dragover', e=>{
   e.preventDefault();
   const dragging = rayonsContainer.querySelector('.dragging');
   const after = getAfterElement(rayonsContainer, e.clientY);
   if(!after) rayonsContainer.appendChild(dragging);
   else rayonsContainer.insertBefore(dragging, after);
 });
-// Détermine l’élément après lequel insérer pendant le drag
-function getAfterElement(container, y) {
+
+// Helper pour trouver l'élément après lequel insérer
+function getAfterElement(container, y){
   return [...container.querySelectorAll('.rayon:not(.dragging)')]
-    .reduce((closest, child) => {
+    .reduce((closest, child)=>{
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height/2;
-      if(offset < 0 && offset > closest.offset) return { offset, element: child };
+      if(offset<0 && offset>closest.offset) return { offset, element: child };
       return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
-//
-rayonsContainer.addEventListener('dragend', e => {
-  e.target.classList.remove('dragging');
-
-  // Mise à jour de l'ordre dans localData (comme pour mobile)
-  const idx = localData.findIndex(r => r.id === e.target.dataset.id);
-  if(idx !== -1){
-    const newOrder = [...rayonsContainer.querySelectorAll('.rayon')].map(r => r.dataset.id);
-    localData.sort((a,b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
-    updateLocalStorage();
-  }
-});
 
 /* =================================================
    DRAG MOBILE / TOUCH
 ================================================= */
-// Initialisation du drag par touch sur un rayon
 function initTouchDrag(rayon){
   const btn = rayon.querySelector('.btn-deplacer-rayon');
   let isDragging = false;
-// Touch start
+
   btn.addEventListener('touchstart', e=>{
     if(e.touches.length!==1) return;
     isDragging=true; rayon.classList.add('dragging'); e.preventDefault();
   }, {passive:false});
-// Touch move
+
   btn.addEventListener('touchmove', e=>{
     if(!isDragging) return;
     const after = getAfterElement(rayonsContainer, e.touches[0].clientY);
-    if(!after) rayonsContainer.appendChild(rayon); 
+    if(!after) rayonsContainer.appendChild(rayon);
     else rayonsContainer.insertBefore(rayon, after);
     e.preventDefault();
   }, {passive:false});
-// Touch end
+
   btn.addEventListener('touchend', ()=>{
     if(!isDragging) return;
     isDragging=false;
     rayon.classList.remove('dragging');
-
-    // Mise à jour de l'ordre dans localData (comme pour PC)
+    // MAJ ordre localData
     const idx = localData.findIndex(r=>r.id===rayon.dataset.id);
     if(idx!==-1){
       const newOrder = [...rayonsContainer.querySelectorAll('.rayon')].map(r=>r.dataset.id);
@@ -291,28 +297,27 @@ function initTouchDrag(rayon){
    INITIALISATION
 ================================================= */
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Chargement : localStorage d'abord, sinon serveur
   if(!loadFromLocal()) loadFromServer();
 
-  // Service Worker PWA (offline)
-  if ('serviceWorker' in navigator) {
+  // Service Worker
+  if('serviceWorker' in navigator){
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('Service Worker enregistré', reg))
-      .catch(err => console.error('Erreur enregistrement SW', err));
+      .catch(err => console.error('Erreur SW', err));
   }
 });
 
 /* =================================================
-   ÉVÉNEMENTS GÉNÉRAUX : AJOUT RAYON
+   AJOUT RAYON
 ================================================= */
 ajouterRayonBtn.addEventListener('click', ()=>{
   const nom = nomRayonInput.value.trim();
   if(!nom) return;
-  const rayonObj = { id: crypto.randomUUID(), nom, collapsed: false, produits: [] };
+  const rayonObj = { id: crypto.randomUUID(), nom, collapsed:false, produits:[] };
   localData.push(rayonObj);
   const rayonEl = createRayon(nom, rayonObj.id);
   rayonsContainer.appendChild(rayonEl);
-  nomRayonInput.value = '';
+  nomRayonInput.value='';
   updateLocalStorage();
 });
 
