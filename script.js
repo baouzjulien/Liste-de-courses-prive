@@ -206,7 +206,7 @@ function addProduit(container, nom, id=null, coche=false){
     // On rattache dans le nouvel ordre
     produitsDOM.forEach(el => contProd.appendChild(el));
   }
-  rebuildDOM();
+
   // Sauvegarde
   updateLocalStorage();
   });
