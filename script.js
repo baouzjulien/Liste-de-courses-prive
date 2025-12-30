@@ -213,6 +213,13 @@ function addProduit(container, nom, id=null, coche=false) {
 /* =================================================
    DRAG & DROP (PC)
 ================================================= */
+rayonsContainer.addEventListener('dragstart', e => {
+  e.target.classList.add('dragging');
+});
+rayonsContainer.addEventListener('dragend', e => {
+  e.target.classList.remove('dragging');
+});
+
 rayonsContainer.addEventListener('dragover', e => {
   e.preventDefault();
   const dragging = rayonsContainer.querySelector('.dragging');
