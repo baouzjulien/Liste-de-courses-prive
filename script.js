@@ -186,30 +186,26 @@ function addProduit(container, nom, id=null, coche=false){
   cb.setAttribute('aria-checked', cb.checked);
 
   // Changement état coché
-  cb.addEventListener('change', ()=>{
-    const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
-    if(r){
-      const prod = r.produits.find(x=>x.id===p.dataset.id);
-      if(prod){
-        prod.coche = cb.checked;
-        p.classList.toggle('produit-coche', cb.checked);
-      }
-    // Réordonne uniquement le DOM des produits de ce rayon
-    const contProd = p.closest('.produits-container');
-    // On extrait les produits DOM et trie selon l'état coche
-    const produitsDOM = [...contProd.children];
-    produitsDOM.sort((a,b)=>{
-      const aCoche = a.querySelector('.produit-checkbox').checked;
-      const bCoche = b.querySelector('.produit-checkbox').checked;
-      return aCoche - bCoche; // décochés en haut
+ cb.addEventListener('change', () => {
+  const rayonEl = p.closest('.rayon');
+  const r = localData.find(r => r.id === rayonEl.dataset.id);
+  if (r) {
+    const prod = r.produits.find(x => x.id === p.dataset.id);
+    if (prod) prod.coche = cb.checked;
+    
+    // Trie le tableau local
+    r.produits.sort((a, b) => a.coche - b.coche);
+
+    // Trie le DOM
+    const contProd = rayonEl.querySelector('.produits-container');
+    r.produits.forEach(pObj => {
+      const prodEl = contProd.querySelector(`.produit[data-id="${pObj.id}"]`);
+      if (prodEl) contProd.appendChild(prodEl);
     });
-    // On rattache dans le nouvel ordre
-    produitsDOM.forEach(el => contProd.appendChild(el));
   }
 
-  // Sauvegarde
-  updateLocalStorage();
-  });
+  updateLocalStorage(); // juste pour sauvegarde, pas de rebuild
+});
 
   // Supprimer produit
   p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
