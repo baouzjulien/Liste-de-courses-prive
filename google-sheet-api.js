@@ -5,37 +5,33 @@ const SHEET_RAYONS = "Rayons";
 const SHEET_PRODUITS = "Produits";
 
 /* =================================================
-   API GET / POST
-   Gestion des requêtes HTTP depuis le frontend
+   API HTTP
 ================================================= */
 
-// GET : renvoie les données ou un ping pour le long-polling
-function doGet(e) {
-  if (e.parameter.ping) {
-    // ping : renvoyer un timestamp
-    return ContentService.createTextOutput(
-      JSON.stringify({updated: new Date().getTime()})
-    ).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // sinon renvoyer toutes les données
-  return ContentService.createTextOutput(
-    JSON.stringify(getData())
-  ).setMimeType(ContentService.MimeType.JSON);
+// GET : renvoie toutes les données
+function doGet() {
+  return ContentService
+    .createTextOutput(JSON.stringify(getData()))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-// POST : sauvegarde des données envoyées depuis le frontend
+// POST : sauvegarde des données envoyées par le client
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     saveData(data);
-    return ContentService.createTextOutput(
-      JSON.stringify({status: "ok"})
-    ).setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService.createTextOutput(
-      JSON.stringify({status: "error", message: err.message})
-    ).setMimeType(ContentService.MimeType.JSON);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        status: "error",
+        message: err.message
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -47,18 +43,27 @@ function getData() {
   const rayonsSheet = ss.getSheetByName(SHEET_RAYONS);
   const produitsSheet = ss.getSheetByName(SHEET_PRODUITS);
 
-  // Récupération des données existantes (hors header)
-  const rayonsData = rayonsSheet.getRange(2,1,rayonsSheet.getLastRow()-1,3).getValues();
-  const produitsData = produitsSheet.getRange(2,1,produitsSheet.getLastRow()-1,4).getValues();
+  if (!rayonsSheet || !produitsSheet) return [];
 
-  // Transformation en objets JS imbriqués
-  return rayonsData.map(r => ({
-    id: r[0],
-    nom: r[1],
-    collapsed: r[2],
+  const rayonsData = rayonsSheet
+    .getRange(2, 1, Math.max(rayonsSheet.getLastRow() - 1, 0), 3)
+    .getValues();
+
+  const produitsData = produitsSheet
+    .getRange(2, 1, Math.max(produitsSheet.getLastRow() - 1, 0), 4)
+    .getValues();
+
+  return rayonsData.map(rayon => ({
+    id: rayon[0],
+    nom: rayon[1],
+    collapsed: rayon[2],
     produits: produitsData
-      .filter(p => p[1] === r[0])
-      .map(p => ({ id: p[0], nom: p[2], coche: p[3] }))
+      .filter(p => p[1] === rayon[0])
+      .map(p => ({
+        id: p[0],
+        nom: p[2],
+        coche: p[3]
+      }))
   }));
 }
 
@@ -67,29 +72,49 @@ function getData() {
 ================================================= */
 function saveData(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+
   let rayonsSheet = ss.getSheetByName(SHEET_RAYONS);
   let produitsSheet = ss.getSheetByName(SHEET_PRODUITS);
 
-  // Création des sheets si elles n'existent pas
-  if(!rayonsSheet) rayonsSheet = ss.insertSheet(SHEET_RAYONS);
-  if(!produitsSheet) produitsSheet = ss.insertSheet(SHEET_PRODUITS);
+  if (!rayonsSheet) rayonsSheet = ss.insertSheet(SHEET_RAYONS);
+  if (!produitsSheet) produitsSheet = ss.insertSheet(SHEET_PRODUITS);
 
-  // Effacement des anciennes données
   rayonsSheet.clearContents();
   produitsSheet.clearContents();
 
-  // Ajout des headers
-  rayonsSheet.getRange(1,1,1,3).setValues([["id","nom","collapsed"]]);
-  produitsSheet.getRange(1,1,1,4).setValues([["id","rayonId","nom","coche"]]);
+  rayonsSheet
+    .getRange(1, 1, 1, 3)
+    .setValues([["id", "nom", "collapsed"]]);
 
-  // Préparation des nouvelles valeurs
-  const rayonsValues = data.map(r => [r.id, r.nom, r.collapsed]);
+  produitsSheet
+    .getRange(1, 1, 1, 4)
+    .setValues([["id", "rayonId", "nom", "coche"]]);
+
+  const rayonsValues = [];
   const produitsValues = [];
-  data.forEach(r => r.produits.forEach(p => 
-    produitsValues.push([p.id, r.id, p.nom, p.coche])
-  ));
 
-  // Écriture des données dans les sheets
-  if(rayonsValues.length>0) rayonsSheet.getRange(2,1,rayonsValues.length,3).setValues(rayonsValues);
-  if(produitsValues.length>0) produitsSheet.getRange(2,1,produitsValues.length,4).setValues(produitsValues);
+  data.forEach(rayon => {
+    rayonsValues.push([rayon.id, rayon.nom, rayon.collapsed]);
+
+    rayon.produits.forEach(prod => {
+      produitsValues.push([
+        prod.id,
+        rayon.id,
+        prod.nom,
+        prod.coche
+      ]);
+    });
+  });
+
+  if (rayonsValues.length) {
+    rayonsSheet
+      .getRange(2, 1, rayonsValues.length, 3)
+      .setValues(rayonsValues);
+  }
+
+  if (produitsValues.length) {
+    produitsSheet
+      .getRange(2, 1, produitsValues.length, 4)
+      .setValues(produitsValues);
+  }
 }
