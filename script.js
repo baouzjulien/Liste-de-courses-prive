@@ -18,12 +18,8 @@ function debounce(fn, delay = 200) {
     t = setTimeout(() => fn.apply(null, args), delay);
   };
 }
-
 function normalize(str) {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 /* =================================================
@@ -33,22 +29,14 @@ function updateLocalStorage() {
   localStorage.setItem('listeCourses', JSON.stringify(localData));
   debounceSaveServer();
 }
-
 let saveTimeout = null;
 function debounceSaveServer(delay = 1000) {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => saveToServer(localData), delay);
 }
-
 async function saveToServer(data) {
-  try {
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  } catch (err) {
-    console.error("Erreur save API :", err);
-  }
+  try { await fetch(API_URL,{method:'POST',body:JSON.stringify(data)}); }
+  catch(err){ console.error("Erreur save API :", err); }
 }
 
 /* =================================================
@@ -58,15 +46,11 @@ function findLocalMatch(rayonId, value) {
   const r = localData.find(r => r.id === rayonId);
   if (!r) return null;
   const v = normalize(value);
-  return r.produits
-    .slice()
-    .sort((a,b)=>a.coche-b.coche)
-    .find(p=>normalize(p.nom).startsWith(v));
+  return r.produits.slice().sort((a,b)=>a.coche-b.coche).find(p => normalize(p.nom).startsWith(v));
 }
-
 function findGlobalMatch(value) {
   const v = normalize(value);
-  for (const r of localData) {
+  for(const r of localData){
     const match = r.produits.find(p=>normalize(p.nom).startsWith(v));
     if(match) return match;
   }
@@ -78,13 +62,10 @@ function findGlobalMatch(value) {
 ================================================= */
 function rebuildDOM() {
   rayonsContainer.innerHTML = "";
-  localData.forEach(r=>{
-    const rayon = createRayon(r.nom,r.id,r.collapsed);
+  localData.forEach(r => {
+    const rayon = createRayon(r.nom, r.id, r.collapsed);
     const cont = rayon.querySelector('.produits-container');
-    r.produits
-      .slice()
-      .sort((a,b)=>a.coche-b.coche)
-      .forEach(p=>addProduit(cont,p.nom,p.id,p.coche));
+    r.produits.slice().sort((a,b)=>a.coche-b.coche).forEach(p => addProduit(cont, p.nom, p.id, p.coche));
     rayonsContainer.appendChild(rayon);
   });
 }
@@ -99,16 +80,13 @@ function loadFromLocal() {
   rebuildDOM();
   return true;
 }
-
 async function loadFromServer() {
   try {
     const res = await fetch(API_URL);
     localData = await res.json();
     rebuildDOM();
     updateLocalStorage();
-  } catch(err) {
-    console.error("Erreur load API :", err);
-  }
+  } catch(err){ console.error("Erreur load API :", err); }
 }
 
 /* =================================================
@@ -117,13 +95,16 @@ async function loadFromServer() {
 function createRayon(nom,id=null,collapsed=false){
   const rayon = document.createElement('div');
   rayon.className='rayon';
-  rayon.dataset.id = id || crypto.randomUUID();
+  rayon.dataset.id=id||crypto.randomUUID();
   rayon.setAttribute('draggable','true');
 
   rayon.innerHTML=`
     <div class="rayon-header">
-      <h2 tabindex="0">${nom}</h2>
-      <button class="btn-supprimer-rayon"></button>
+      <button class="btn-deplacer-rayon">☰</button>
+      <h2>${nom}</h2>
+      <div class="rayon-actions">
+        <button class="btn-supprimer-rayon">✖</button>
+      </div>
     </div>
     <div class="produits-container"></div>
     <div class="rayon-footer">
@@ -143,76 +124,67 @@ function createRayon(nom,id=null,collapsed=false){
 function initRayonActions(rayon){
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
-  const nomH2 = header.querySelector('h2');
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
+  const titre = rayon.querySelector('h2');
 
   // Collapse / expand
   header.addEventListener('click', e=>{
-    if(e.target===btnSup) return;
+    if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
     const r = localData.find(r=>r.id===rayon.dataset.id);
-    if(r) r.collapsed = rayon.classList.contains('collapsed');
+    if(r) r.collapsed=rayon.classList.contains('collapsed');
     updateLocalStorage();
   });
 
-  // Suppression rayon
+  // Supprimer rayon
   btnSup.addEventListener('click', ()=>{
     localData = localData.filter(r=>r.id!==rayon.dataset.id);
     rayon.remove();
     updateLocalStorage();
   });
 
-  // Modif rayon via double tap/clic
-  let editing=false;
-  nomH2.addEventListener('dblclick', ()=>{
-    editing=true;
-    const input = document.createElement('input');
-    input.type='text';
-    input.value=nomH2.textContent;
-    nomH2.replaceWith(input);
-    input.focus();
-
-    input.addEventListener('keydown', e=>{
-      if(e.key==='Enter'){
-        const val=input.value.trim();
-        if(val){
-          const r=localData.find(r=>r.id===rayon.dataset.id);
-          if(r) r.nom=val;
-          const h2=document.createElement('h2');
-          h2.textContent=val;
-          input.replaceWith(h2);
-          editing=false;
-          initRayonActions(rayon);
-          updateLocalStorage();
-        }
-      }
-    });
+  // Apparition croix au clic
+  header.addEventListener('click', ()=> {
+    rayon.querySelector('.rayon-actions').classList.add('show');
+    setTimeout(()=>rayon.querySelector('.rayon-actions').classList.remove('show'), 3000);
   });
 
-  // Affichage dynamique croix rayon
-  btnSup.style.opacity='0';
-  const showSup = ()=>btnSup.style.opacity='1';
-  const hideSup = ()=>btnSup.style.opacity='0';
-  nomH2.addEventListener('mouseenter', showSup);
-  nomH2.addEventListener('focus', showSup);
-  nomH2.addEventListener('mouseleave', hideSup);
-  nomH2.addEventListener('blur', hideSup);
-  nomH2.addEventListener('touchstart', e=>{ btnSup.style.opacity='1'; });
-  document.addEventListener('touchstart', e=>{ if(!rayon.contains(e.target)) btnSup.style.opacity='0'; });
+  // Modification inline double clic
+  let editing=false;
+  titre.addEventListener('dblclick', ()=>{
+    if(editing) return;
+    editing=true;
+    const old = titre.textContent;
+    titre.contentEditable=true;
+    titre.focus();
+    document.execCommand('selectAll',false,null);
+  });
+  titre.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const newVal = titre.textContent.trim();
+      if(newVal){
+        const r=localData.find(r=>r.id===rayon.dataset.id);
+        if(r) r.nom=newVal;
+        updateLocalStorage();
+      }
+      titre.contentEditable=false;
+      editing=false;
+    }
+  });
 
   /* ========= AUTOCOMPLÉTION PRODUITS ========= */
   let lastSuggestion=null;
   const debouncedAutocomplete = debounce(()=>{
     const value=inputProd.value;
     if(!value) return;
-    const match=findLocalMatch(rayon.dataset.id,value)||findGlobalMatch(value);
+    const match = findLocalMatch(rayon.dataset.id,value) || findGlobalMatch(value);
     if(!match) return;
     lastSuggestion=match.nom;
     inputProd.value=match.nom;
     inputProd.setSelectionRange(value.length, match.nom.length);
   });
-
   inputProd.addEventListener('input', debouncedAutocomplete);
   inputProd.addEventListener('keydown', e=>{
     if(e.key==='Tab' && lastSuggestion){
@@ -221,19 +193,23 @@ function initRayonActions(rayon){
       inputProd.setSelectionRange(lastSuggestion.length,lastSuggestion.length);
     }
   });
-
   inputProd.addEventListener('keydown', e=>{
     if(e.key!=='Enter') return;
     const val=inputProd.value.trim();
     if(!val) return;
     const r=localData.find(r=>r.id===rayon.dataset.id);
     if(!r) return;
-    const exists=r.produits.some(p=>normalize(p.nom)===normalize(val));
-    if(exists){ inputProd.value=''; lastSuggestion=null; return; }
-    const pObj={id:crypto.randomUUID(), nom:val, coche:false};
+    const exists = r.produits.some(p=>normalize(p.nom)===normalize(val));
+    if(exists){
+      inputProd.value='';
+      lastSuggestion=null;
+      return;
+    }
+    const pObj={id:crypto.randomUUID(),nom:val,coche:false};
     r.produits.push(pObj);
     addProduit(contProd,val,pObj.id);
-    inputProd.value=''; lastSuggestion=null;
+    inputProd.value='';
+    lastSuggestion=null;
     updateLocalStorage();
   });
 }
@@ -245,66 +221,72 @@ function addProduit(container,nom,id=null,coche=false){
   const p=document.createElement('div');
   p.className='produit';
   p.dataset.id=id||crypto.randomUUID();
-
   p.innerHTML=`
-    <span class="produit-nom" tabindex="0">${nom}</span>
-    <button class="btn-supprimer-produit"></button>
+    <input type="checkbox" class="produit-checkbox">
+    <span class="produit-nom">${nom}</span>
+    <div class="produit-actions">
+      <button class="btn-supprimer-produit">✖</button>
+    </div>
   `;
 
+  const cb=p.querySelector('.produit-checkbox');
   const nomSpan=p.querySelector('.produit-nom');
-  const btnSupProd=p.querySelector('.btn-supprimer-produit');
+  cb.checked=coche;
   p.classList.toggle('produit-coche',coche);
 
-  // Modif produit
+  // Clic sur nom = modification inline double clic
   let editing=false;
   nomSpan.addEventListener('dblclick', ()=>{
     if(editing) return;
     editing=true;
-    const input=document.createElement('input');
-    input.type='text';
-    input.value=nomSpan.textContent;
-    nomSpan.replaceWith(input);
-    input.focus();
-    input.addEventListener('keydown', e=>{
-      if(e.key==='Enter'){
-        const val=input.value.trim();
-        if(val){
-          const rayonEl=p.closest('.rayon');
-          const r=localData.find(r=>r.id===rayonEl.dataset.id);
-          if(r){
-            const prod=r.produits.find(x=>x.id===p.dataset.id);
-            if(prod) prod.nom=val;
-          }
-          const span=document.createElement('span');
-          span.className='produit-nom';
-          span.textContent=val;
-          input.replaceWith(span);
-          editing=false;
-          addProduit(container,val,p.dataset.id);
-          updateLocalStorage();
-        }
+    nomSpan.contentEditable=true;
+    nomSpan.focus();
+    document.execCommand('selectAll',false,null);
+  });
+  nomSpan.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const newVal=nomSpan.textContent.trim();
+      if(newVal){
+        const r=localData.find(r=>r.id===p.closest('.rayon').dataset.id);
+        if(!r) return;
+        const prod=r.produits.find(x=>x.id===p.dataset.id);
+        if(prod) prod.nom=newVal;
+        updateLocalStorage();
       }
-    });
+      nomSpan.contentEditable=false;
+      editing=false;
+    }
   });
 
-  // Suppression produit
-  btnSupProd.addEventListener('click', ()=>{
+  cb.addEventListener('change', ()=>{
+    const rayonEl=p.closest('.rayon');
+    const r=localData.find(r=>r.id===rayonEl.dataset.id);
+    if(!r) return;
+    const prod=r.produits.find(x=>x.id===p.dataset.id);
+    if(prod) prod.coche=cb.checked;
+    p.classList.toggle('produit-coche',cb.checked);
+    r.produits.sort((a,b)=>a.coche-b.coche);
+    const cont=rayonEl.querySelector('.produits-container');
+    r.produits.forEach(pObj=>{
+      const el=cont.querySelector(`.produit[data-id="${pObj.id}"]`);
+      if(el) cont.appendChild(el);
+    });
+    updateLocalStorage();
+  });
+
+  // Apparition suppression au clic
+  p.addEventListener('click', ()=> {
+    p.querySelector('.produit-actions').classList.add('show');
+    setTimeout(()=>p.querySelector('.produit-actions').classList.remove('show'),3000);
+  });
+
+  p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
     const r=localData.find(r=>r.id===p.closest('.rayon').dataset.id);
     if(r) r.produits=r.produits.filter(x=>x.id!==p.dataset.id);
     p.remove();
     updateLocalStorage();
   });
-
-  // Affichage dynamique croix produit
-  btnSupProd.style.opacity='0';
-  const showSupProd=()=>btnSupProd.style.opacity='1';
-  const hideSupProd=()=>btnSupProd.style.opacity='0';
-  nomSpan.addEventListener('mouseenter', showSupProd);
-  nomSpan.addEventListener('focus', showSupProd);
-  nomSpan.addEventListener('mouseleave', hideSupProd);
-  nomSpan.addEventListener('blur', hideSupProd);
-  nomSpan.addEventListener('touchstart', ()=>btnSupProd.style.opacity='1');
-  document.addEventListener('touchstart', e=>{ if(!p.contains(e.target)) btnSupProd.style.opacity='0'; });
 
   container.appendChild(p);
 }
@@ -323,20 +305,19 @@ rayonsContainer.addEventListener('dragover', e=>{
   e.preventDefault();
   const dragging=document.querySelector('.dragging');
   const after=[...rayonsContainer.children].find(r=>e.clientY<r.getBoundingClientRect().top+r.offsetHeight/2);
-  after ? rayonsContainer.insertBefore(dragging,after) : rayonsContainer.appendChild(dragging);
+  after?rayonsContainer.insertBefore(dragging,after):rayonsContainer.appendChild(dragging);
 });
-
 function initTouchDrag(rayon){
-  const btn=rayon.querySelector('h2');
+  const btn=rayon.querySelector('.btn-deplacer-rayon');
   let dragging=false;
-  btn.addEventListener('touchstart', e=>{ dragging=true; rayon.classList.add('dragging'); e.preventDefault(); },{passive:false});
+  btn.addEventListener('touchstart', e=>{dragging=true; rayon.classList.add('dragging'); e.preventDefault();},{passive:false});
   btn.addEventListener('touchmove', e=>{
     if(!dragging) return;
     const after=[...rayonsContainer.children].find(r=>e.touches[0].clientY<r.getBoundingClientRect().top+r.offsetHeight/2);
-    after ? rayonsContainer.insertBefore(rayon,after) : rayonsContainer.appendChild(rayon);
+    after?rayonsContainer.insertBefore(rayon,after):rayonsContainer.appendChild(rayon);
     e.preventDefault();
   },{passive:false});
-  btn.addEventListener('touchend', ()=>{ dragging=false; rayon.classList.remove('dragging'); updateLocalStorage(); });
+  btn.addEventListener('touchend', ()=>{dragging=false; rayon.classList.remove('dragging'); updateLocalStorage();});
 }
 
 /* =================================================
@@ -358,4 +339,4 @@ ajouterRayonBtn.addEventListener('click', ()=>{
   nomRayonInput.value='';
   updateLocalStorage();
 });
-nomRayonInput.addEventListener('keydown', e=>{ if(e.key==='Enter') ajouterRayonBtn.click(); });
+nomRayonInput.addEventListener('keydown', e=>{if(e.key==='Enter') ajouterRayonBtn.click();});

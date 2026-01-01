@@ -7,58 +7,63 @@ button{border:none;border-radius:4px;cursor:pointer;font-size:1rem;}
 button,input{-webkit-tap-highlight-color:transparent;outline:none;}
 
 /* =================================================
-   LAYOUT
+   LAYOUT GÉNÉRAL
 ================================================= */
 .container{max-width:600px;margin:1rem auto;padding:1rem;background:#fff;border-radius:5px;}
-h1{text-align:center;margin-bottom:1rem;padding:0.5rem;background:#828181;color:#fff;border-radius:5px;}
+h1{text-align:center;margin-bottom:1rem;padding:0.5rem;background:#828181;color:white;border-radius:5px;}
 
 /* =================================================
-   AJOUT RAYON
+   COMPOSANT : AJOUT RAYON
 ================================================= */
 .add-rayon{display:flex;gap:0.5rem;margin-bottom:1rem;}
 .add-rayon input{flex:1;padding:0.3rem;border-radius:4px;border:solid 1px #ccc;}
 .add-rayon button{padding:0.3rem 0.6rem;cursor:pointer;}
 
 /* =================================================
-   RAYON
+   COMPOSANT : RAYON
 ================================================= */
 .rayon{background:#f4f3f3;padding:0.5rem;margin-bottom:1rem;border-radius:5px;}
 .rayon.dragging{opacity:0.6;transform:scale(0.97);}
-.rayon.collapsed .produits-container,.rayon.collapsed .rayon-footer{display:none;}
+.rayon.collapsed .produits-container,
+.rayon.collapsed .rayon-footer{display:none;}
 .rayon-header{display:flex;align-items:center;gap:0.5rem;cursor:pointer;}
 .rayon-header h2{margin:0;flex:1;}
+.btn-deplacer-rayon{background:none;border:none;font-size:1.2rem;color:#b1b0b0;cursor:grab;}
+.btn-deplacer-rayon:active{cursor:grabbing;}
 .rayon-footer{display:flex;gap:0.5rem;margin-top:0.5rem;}
 .rayon-footer input{flex:1;padding:0.3rem;}
+.rayon-actions{display:flex;gap:0.3rem;opacity:0;transition:opacity 0.2s;}
+.rayon-actions.show{opacity:1;}
 
 /* =================================================
-   PRODUIT
+   COMPOSANT : PRODUIT
 ================================================= */
-.produit{display:flex;align-items:center;padding:0.3rem 0;border-bottom:1px solid #dcdcdc;}
+.produit{display:flex;align-items:center;padding:0.3rem 0;border-bottom:1px solid #dcdcdc;position:relative;}
 .produits-container{margin-top:0.5rem;}
-.produit-nom{margin-left:5px;flex:1;}
+.produit-nom{margin-left:5px;flex:1;cursor:text;}
 .produit-coche .produit-nom{text-decoration:line-through;opacity:0.5;}
 input.nouveau-produit{padding:0.3rem;border-radius:4px;border:solid 1px #ccc;width:100%;}
+.produit-actions{display:flex;gap:0.3rem;opacity:0;transition:opacity 0.2s;position:absolute;right:0;top:50%;transform:translateY(-50%);}
+.produit-actions.show{opacity:1;}
+.produit-actions button{background:none;color:#666;font-size:1rem;cursor:pointer;padding:0;margin:0;}
 
 /* =================================================
-   CROIX SUPPRESSION
+   COMPOSANT : CHECKBOX
 ================================================= */
-.btn-supprimer-rayon,.btn-supprimer-produit{
-  width:18px;height:18px;position:relative;cursor:pointer;background:none;border:none;opacity:0;transition:opacity 0.2s;
-}
-.btn-supprimer-rayon::before,.btn-supprimer-rayon::after,
-.btn-supprimer-produit::before,.btn-supprimer-produit::after{
-  content:'';position:absolute;top:50%;left:50%;width:12px;height:2px;background:#666;
-}
-.btn-supprimer-rayon::before,.btn-supprimer-produit::before{transform:translate(-50%,-50%) rotate(45deg);}
-.btn-supprimer-rayon::after,.btn-supprimer-produit::after{transform:translate(-50%,-50%) rotate(-45deg);}
+.produit-checkbox{appearance:none;-webkit-appearance:none;width:16px;height:16px;border:2px solid #666;border-radius:4px;background:#efefef;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+.produit-checkbox:checked{background-color:#666;}
+.produit-checkbox:checked::after{content:"✓";color:#fff;font-size:12px;}
 
 /* =================================================
-   INTERACTIONS
+   INTERACTIONS (PC)
 ================================================= */
-.rayon-header:hover .btn-supprimer-rayon,
-.produit:hover .btn-supprimer-produit{opacity:1;}
+.rayon:hover .rayon-actions.show,
+.produit:hover .produit-actions.show{opacity:1;}
 
 /* =================================================
    RESPONSIVE
 ================================================= */
-@media(max-width:430px){.rayon-footer,.add-rayon{flex-direction:column;}}
+@media(max-width:430px){
+  .rayon-footer{flex-direction:column;}
+  .add-rayon{flex-direction:column;}
+}
