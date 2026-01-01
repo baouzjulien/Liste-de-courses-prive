@@ -8,6 +8,7 @@ Une petite application web pour gérer une liste de courses avec des rayons et d
 
 - Création, modification et suppression de rayons.
 - Ajout, modification et suppression de produits.
+- Autocomplétion et prévention des doublons.
 - Marquer les produits comme achetés.
 - Collapse/expand des rayons pour une vue compacte.
 - Drag & drop des rayons sur mobile et desktop.
