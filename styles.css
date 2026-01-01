@@ -41,6 +41,11 @@ input, button {
   padding: 8px;
 }
 
+.rayon.dragging {
+  opacity: 0.6;
+  transform: scale(0.98);
+}
+
 .rayon-header {
   display: flex;
   align-items: center;
@@ -56,21 +61,25 @@ input, button {
 }
 
 /* Drag handle */
-.rayon-drag {
+.btn-deplacer-rayon {
   cursor: grab;
   font-size: 1.2rem;
   opacity: 0.6;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 /* Collapse */
-.rayon.collapsed .rayon-content {
+.rayon.collapsed .produits-container,
+.rayon.collapsed .rayon-footer {
   display: none;
 }
 
 /* =================================================
    PRODUITS
 ================================================= */
-.rayon-content {
+.produits-container {
   margin-top: 8px;
 }
 
@@ -79,10 +88,7 @@ input, button {
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-}
-
-.produit input[type="checkbox"] {
-  cursor: pointer;
+  transition: transform 0.25s ease;
 }
 
 .produit-nom {
@@ -90,35 +96,49 @@ input, button {
   cursor: pointer;
 }
 
-.produit-nom[contenteditable="true"] {
-  outline: none;
-  background: #eef;
-  border-radius: 4px;
-  padding: 2px 4px;
-}
-
 /* Produit coché */
-.produit.checked .produit-nom {
+.produit-coche .produit-nom {
   text-decoration: line-through;
   opacity: 0.6;
 }
 
 /* =================================================
-   INPUT AJOUT PRODUIT
+   CHECKBOX PERSONNALISÉE (RESTAURÉE)
 ================================================= */
-.add-produit {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
+.produit-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #666;
+  border-radius: 4px;
+  background-color: #efefef;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.add-produit input {
-  flex: 1;
+.produit-checkbox:checked {
+  background-color: #666;
+}
+
+.produit-checkbox:checked::after {
+  content: "✓";
+  color: #fff;
+  font-size: 12px;
+}
+
+/* =================================================
+   INPUT AJOUT PRODUIT
+================================================= */
+.nouveau-produit {
+  width: 100%;
   padding: 6px;
 }
 
 /* =================================================
-   CROIX DE SUPPRESSION (RAYONS & PRODUITS)
+   CROIX DE SUPPRESSION
 ================================================= */
 .btn-supprimer-rayon,
 .btn-supprimer-produit {
@@ -133,13 +153,12 @@ input, button {
   transition: opacity 0.2s;
 }
 
-/* Apparition contrôlée par JS */
 .rayon-actions.show .btn-supprimer-rayon,
 .produit-actions.show .btn-supprimer-produit {
   opacity: 1;
 }
 
-/* Dessin de la croix */
+/* Croix */
 .btn-supprimer-rayon::before,
 .btn-supprimer-rayon::after,
 .btn-supprimer-produit::before,
@@ -148,7 +167,7 @@ input, button {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 16px;      /* ← plus grand */
+  width: 16px;
   height: 2px;
   background: #666;
 }
@@ -171,7 +190,7 @@ input, button {
 }
 
 /* =================================================
-   ZONES ACTIONS (pour JS)
+   ZONES ACTIONS
 ================================================= */
 .rayon-actions,
 .produit-actions {
