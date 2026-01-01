@@ -1,34 +1,54 @@
-* { box-sizing: border-box; }
+/* =================================================
+   RESET / BASE
+================================================= */
+* {
+  box-sizing: border-box;
+}
 
 body {
   font-family: Arial, sans-serif;
   background: #f5f5f5;
-  padding: 16px;
   margin: 0;
-}
-
-.container {
-  max-width: 600px;
-  margin: auto;
-  background: #fff;
   padding: 16px;
-  border-radius: 6px;
 }
 
+h1 {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  color: #222;
+}
+
+input, button {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+/* =================================================
+   AJOUT RAYON
+================================================= */
 .add-rayon {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
 }
 
+#nouveau-rayon {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* =================================================
+   RAYONS
+================================================= */
 .rayon {
   background: #fff;
   border-radius: 6px;
   margin-bottom: 12px;
   padding: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
-
-.rayon.dragging { opacity: .6; }
 
 .rayon-header {
   display: flex;
@@ -37,10 +57,38 @@ body {
   cursor: pointer;
 }
 
-.rayon-drag { cursor: grab; opacity: .6; }
+.rayon-header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.2rem;
+  user-select: none;
+}
 
-.rayon.collapsed .rayon-content,
-.rayon.collapsed .add-produit { display: none; }
+/* Drag handle */
+.btn-deplacer-rayon {
+  cursor: grab;
+  font-size: 1.2rem;
+  background: none;
+  border: none;
+  padding: 0 4px;
+  color: #666;
+}
+
+.btn-deplacer-rayon:active {
+  cursor: grabbing;
+}
+
+/* Collapse */
+.rayon.collapsed .produits-container {
+  display: none;
+}
+
+/* =================================================
+   PRODUITS
+================================================= */
+.rayon-content {
+  margin-top: 8px;
+}
 
 .produit {
   display: flex;
@@ -49,72 +97,116 @@ body {
   padding: 4px 0;
 }
 
-.produit.checked .produit-nom {
-  text-decoration: line-through;
-  opacity: .6;
+.produit input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #666;
 }
 
-.produit-checkbox {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #666;
-  border-radius: 4px;
-  background: #eee;
+.produit-nom {
+  flex: 1;
+  cursor: pointer;
 }
 
-.produit-checkbox:checked {
-  background: #666;
-}
-
-.produit-checkbox:checked::after {
-  content: "✓";
-  color: #fff;
-  font-size: 12px;
-}
-
-.produit-nom[contenteditable="true"],
-.rayon-header h2[contenteditable="true"] {
+.produit-nom[contenteditable="true"] {
+  outline: none;
   background: #eef;
   border-radius: 4px;
   padding: 2px 4px;
-  outline: none;
 }
 
+/* Produit coché */
+.produit.checked .produit-nom,
+.produit.produit-coche .produit-nom {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* =================================================
+   INPUT AJOUT PRODUIT
+================================================= */
+.add-produit {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.add-produit input {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* =================================================
+   CROIX DE SUPPRESSION (RAYONS & PRODUITS)
+================================================= */
 .btn-supprimer-rayon,
 .btn-supprimer-produit {
-  width: 28px;
-  height: 28px;
   background: none;
   border: none;
-  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
   cursor: pointer;
+  position: relative;
   opacity: 0;
+  transition: opacity 0.2s;
 }
 
+/* Apparition contrôlée par JS */
 .rayon-actions.show .btn-supprimer-rayon,
 .produit-actions.show .btn-supprimer-produit {
   opacity: 1;
 }
 
+/* Dessin de la croix */
 .btn-supprimer-rayon::before,
 .btn-supprimer-rayon::after,
 .btn-supprimer-produit::before,
 .btn-supprimer-produit::after {
   content: '';
   position: absolute;
-  width: 16px;
-  height: 2px;
-  background: #666;
   top: 50%;
   left: 50%;
+  width: 18px;      /* légèrement plus grand */
+  height: 2px;
+  background: #666;
 }
 
 .btn-supprimer-rayon::before,
 .btn-supprimer-produit::before {
   transform: translate(-50%, -50%) rotate(45deg);
 }
+
 .btn-supprimer-rayon::after,
 .btn-supprimer-produit::after {
   transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.btn-supprimer-rayon:hover::before,
+.btn-supprimer-rayon:hover::after,
+.btn-supprimer-produit:hover::before,
+.btn-supprimer-produit:hover::after {
+  background: #000;
+}
+
+/* =================================================
+   ZONES ACTIONS (pour JS)
+================================================= */
+.rayon-actions,
+.produit-actions {
+  display: flex;
+  align-items: center;
+}
+
+/* =================================================
+   DRAG & DROP VISUEL
+================================================= */
+.rayon.dragging {
+  opacity: 0.7;
+  background: #eef;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border: 1px dashed #ccc;
 }
