@@ -1,5 +1,5 @@
 /* =================================================
-   CONSTANTES ET ÉLÉMENTS DOM
+   CONSTANTES
 ================================================= */
 const API_URL = "https://script.google.com/macros/s/AKfycbyt1rnaburyDKblXGC0BUKh6-1JLtGcOhxrZiNe8Bye09enlV_EU7_37WHFz4Ymo8_W/exec";
 const rayonsContainer = document.getElementById('rayons-container');
@@ -15,19 +15,66 @@ function debounce(fn, delay = 200) {
   let t;
   return (...args) => {
     clearTimeout(t);
-    t = setTimeout(() => fn.apply(null, args), delay);
+    t = setTimeout(() => fn(...args), delay);
   };
 }
 
 function normalize(str) {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 /* =================================================
-   SAUVEGARDE LOCALE + SERVEUR
+   INLINE EDIT (produits + rayons)
+================================================= */
+function enableInlineEdit(el, onSave) {
+  let original = "";
+  let editing = false;
+
+  el.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    if (editing) return;
+
+    editing = true;
+    original = el.textContent;
+
+    el.setAttribute('contenteditable', 'true');
+    el.focus();
+
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  });
+
+  el.addEventListener('keydown', e => {
+    if (!editing) return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      el.blur();
+    }
+    if (e.key === 'Escape') {
+      el.textContent = original;
+      el.blur();
+    }
+  });
+
+  el.addEventListener('blur', () => {
+    if (!editing) return;
+    editing = false;
+    el.removeAttribute('contenteditable');
+
+    const val = el.textContent.trim();
+    if (val && val !== original) onSave(val);
+    else el.textContent = original;
+
+    updateLocalStorage();
+  });
+}
+
+/* =================================================
+   SAUVEGARDE
 ================================================= */
 function updateLocalStorage() {
   localStorage.setItem('listeCourses', JSON.stringify(localData));
@@ -36,364 +83,222 @@ function updateLocalStorage() {
 
 let saveTimeout = null;
 function debounceSaveServer(delay = 1000) {
-  if (saveTimeout) clearTimeout(saveTimeout);
+  clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => saveToServer(localData), delay);
 }
 
 async function saveToServer(data) {
   try {
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  } catch (err) {
-    console.error("Erreur save API :", err);
-  }
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+  } catch {}
 }
 
 /* =================================================
-   AUTOCOMPLÉTION PRODUITS
+   AUTOCOMPLÉTION
 ================================================= */
-function findLocalMatch(rayonId, value) {
-  const r = localData.find(r => r.id === rayonId);
-  if (!r) return null;
-
+function findMatch(value, rayonId) {
   const v = normalize(value);
-  return r.produits
-    .slice()
-    .sort((a, b) => a.coche - b.coche)
-    .find(p => normalize(p.nom).startsWith(v));
-}
-
-function findGlobalMatch(value) {
-  const v = normalize(value);
+  const local = localData.find(r => r.id === rayonId);
+  if (local) {
+    const m = local.produits.find(p => normalize(p.nom).startsWith(v));
+    if (m) return m;
+  }
   for (const r of localData) {
-    const match = r.produits.find(p => normalize(p.nom).startsWith(v));
-    if (match) return match;
+    const m = r.produits.find(p => normalize(p.nom).startsWith(v));
+    if (m) return m;
   }
   return null;
 }
 
 /* =================================================
-   REBUILD DOM
+   DOM
 ================================================= */
 function rebuildDOM() {
   rayonsContainer.innerHTML = "";
   localData.forEach(r => {
-    const rayon = createRayon(r.nom, r.id, r.collapsed);
-    const cont = rayon.querySelector('.produits-container');
-
-    r.produits
-      .slice()
-      .sort((a, b) => a.coche - b.coche)
-      .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
-
+    const rayon = createRayon(r);
     rayonsContainer.appendChild(rayon);
   });
 }
 
 /* =================================================
-   CHARGEMENT DONNÉES
+   RAYON
 ================================================= */
-function loadFromLocal() {
-  const saved = localStorage.getItem('listeCourses');
-  if (!saved) return false;
-  localData = JSON.parse(saved);
-  rebuildDOM();
-  return true;
-}
+function createRayon(r) {
+  const el = document.createElement('div');
+  el.className = 'rayon';
+  el.dataset.id = r.id;
+  el.draggable = true;
 
-async function loadFromServer() {
-  try {
-    const res = await fetch(API_URL);
-    localData = await res.json();
-    rebuildDOM();
-    updateLocalStorage();
-  } catch (err) {
-    console.error("Erreur load API :", err);
-  }
-}
-
-/* =================================================
-   COMPOSANT RAYON
-================================================= */
-function createRayon(nom, id = null, collapsed = false) {
-  const rayon = document.createElement('div');
-  rayon.className = 'rayon';
-  rayon.dataset.id = id || crypto.randomUUID();
-  rayon.setAttribute('draggable','true');
-
-  rayon.innerHTML = `
+  el.innerHTML = `
     <div class="rayon-header">
-      <button class="btn-deplacer-rayon">☰</button>
-      <h2>${nom}</h2>
+      <span class="rayon-drag">☰</span>
+      <h2>${r.nom}</h2>
       <div class="rayon-actions">
-        <button class="btn-supprimer-rayon">×</button>
+        <button class="btn-supprimer-rayon"></button>
       </div>
     </div>
-    <div class="produits-container"></div>
-    <div class="rayon-footer">
+    <div class="rayon-content"></div>
+    <div class="add-produit">
       <input type="text" class="nouveau-produit" placeholder="Ajouter un produit">
     </div>
   `;
 
-  if(collapsed) rayon.classList.add('collapsed');
+  if (r.collapsed) el.classList.add('collapsed');
 
-  initRayonActions(rayon);
-  initTouchDrag(rayon);
-  return rayon;
+  const content = el.querySelector('.rayon-content');
+  r.produits
+    .slice()
+    .sort((a, b) => a.coche - b.coche)
+    .forEach(p => content.appendChild(createProduit(p, r)));
+
+  initRayon(el, r);
+  return el;
 }
 
-/* =================================================
-   ACTIONS SUR RAYON
-================================================= */
-function initRayonActions(rayon){
-  const header = rayon.querySelector('.rayon-header');
-  const btnSup = rayon.querySelector('.btn-supprimer-rayon');
-  const inputProd = rayon.querySelector('.nouveau-produit');
-  const contProd = rayon.querySelector('.produits-container');
-  const actions = rayon.querySelector('.rayon-actions');
+function initRayon(el, r) {
+  const header = el.querySelector('.rayon-header');
+  const title = el.querySelector('h2');
+  const input = el.querySelector('.nouveau-produit');
+  const actions = el.querySelector('.rayon-actions');
 
-  // Collapse / expand
-  header.addEventListener('click', e=>{
-    if(e.target.closest('button')) return;
-    rayon.classList.toggle('collapsed');
-    const r = localData.find(r=>r.id===rayon.dataset.id);
-    if(r) r.collapsed = rayon.classList.contains('collapsed');
+  header.addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    el.classList.toggle('collapsed');
+    r.collapsed = el.classList.contains('collapsed');
     updateLocalStorage();
+    actions.classList.add('show');
   });
 
-  // Affichage suppression sur click
-  header.addEventListener('click', e=>{
-    if(!actions.classList.contains('show')) actions.classList.add('show');
-  });
+  enableInlineEdit(title, nv => r.nom = nv);
 
-  // Supprimer rayon
-  btnSup.addEventListener('click', ()=>{
-    localData = localData.filter(r=>r.id!==rayon.dataset.id);
-    rayon.remove();
+  el.querySelector('.btn-supprimer-rayon').onclick = () => {
+    localData = localData.filter(x => x.id !== r.id);
+    el.remove();
     updateLocalStorage();
-  });
+  };
 
-  // Modifier nom rayon : double-clic sur h2
-  const titre = rayon.querySelector('h2');
-  titre.addEventListener('dblclick', ()=>{
-    const nv = prompt("Nouveau nom:", titre.textContent.trim());
-    if(!nv) return;
-    titre.textContent = nv;
-    const r = localData.find(r=>r.id===rayon.dataset.id);
-    if(r) r.nom = nv;
-    updateLocalStorage();
-  });
-
-  /* ========= AUTOCOMPLÉTION PRODUITS ========= */
   let lastSuggestion = null;
-  const debouncedAutocomplete = debounce(()=>{
-    const value = inputProd.value;
-    if(!value) return;
+  input.addEventListener('input', debounce(() => {
+    const v = input.value;
+    if (!v) return;
+    const m = findMatch(v, r.id);
+    if (!m) return;
+    lastSuggestion = m.nom;
+    input.value = m.nom;
+    input.setSelectionRange(v.length, m.nom.length);
+  }));
 
-    const match =
-      findLocalMatch(rayon.dataset.id, value) ||
-      findGlobalMatch(value);
+  input.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const v = input.value.trim();
+    if (!v) return;
 
-    if(!match) return;
-
-    lastSuggestion = match.nom;
-    inputProd.value = match.nom;
-    inputProd.setSelectionRange(value.length, match.nom.length);
-  });
-
-  inputProd.addEventListener('input', debouncedAutocomplete);
-
-  // Tab pour compléter
-  inputProd.addEventListener('keydown', e=>{
-    if(e.key==='Tab' && lastSuggestion){
-      e.preventDefault();
-      inputProd.value = lastSuggestion;
-      inputProd.setSelectionRange(lastSuggestion.length,lastSuggestion.length);
-    }
-  });
-
-  // Ajouter produit avec Enter
-  inputProd.addEventListener('keydown', e=>{
-    if(e.key!=='Enter') return;
-
-    const val = inputProd.value.trim();
-    if(!val) return;
-
-    const r = localData.find(r=>r.id===rayon.dataset.id);
-    if(!r) return;
-
-    const exists = r.produits.some(p => normalize(p.nom)===normalize(val));
-
-    if(exists){
-      inputProd.value='';
-      lastSuggestion=null;
-      return; // on fait rien si déjà existant
+    if (r.produits.some(p => normalize(p.nom) === normalize(v))) {
+      input.value = '';
+      lastSuggestion = null;
+      return;
     }
 
-    const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
-    r.produits.push(pObj);
-    addProduit(contProd, val, pObj.id);
-    inputProd.value='';
-    lastSuggestion=null;
+    const p = { id: crypto.randomUUID(), nom: v, coche: false };
+    r.produits.push(p);
+    el.querySelector('.rayon-content').appendChild(createProduit(p, r));
+    input.value = '';
+    lastSuggestion = null;
     updateLocalStorage();
   });
 }
 
 /* =================================================
-   COMPOSANT PRODUIT
+   PRODUIT
 ================================================= */
-function addProduit(container, nom, id=null, coche=false){
-  const p = document.createElement('div');
-  p.className='produit';
-  p.dataset.id = id||crypto.randomUUID();
+function createProduit(p, r) {
+  const el = document.createElement('div');
+  el.className = 'produit';
+  el.dataset.id = p.id;
 
-  p.innerHTML = `
+  el.innerHTML = `
     <input type="checkbox" class="produit-checkbox">
-    <span class="produit-nom">${nom}</span>
+    <span class="produit-nom">${p.nom}</span>
     <div class="produit-actions">
-      <button class="btn-supprimer-produit">×</button>
+      <button class="btn-supprimer-produit"></button>
     </div>
   `;
 
-  const cb = p.querySelector('.produit-checkbox');
-  const nomSpan = p.querySelector('.produit-nom');
-  const actions = p.querySelector('.produit-actions');
+  const cb = el.querySelector('.produit-checkbox');
+  const name = el.querySelector('.produit-nom');
+  const actions = el.querySelector('.produit-actions');
 
-  cb.checked = coche;
-  p.classList.toggle('produit-coche', coche);
+  cb.checked = p.coche;
+  el.classList.toggle('checked', p.coche);
 
-  // Toggle suppression sur click produit
-  p.addEventListener('click', ()=>{
-    if(!actions.classList.contains('show')) actions.classList.add('show');
-  });
-
-  // Modifier produit : double-clic sur nom
-  nomSpan.addEventListener('dblclick', ()=>{
-    const nv = prompt("Nouveau nom:", nomSpan.textContent);
-    if(!nv) return;
-    nomSpan.textContent = nv;
-    const r = localData.find(r=>r.produits.some(pObj=>pObj.id===p.dataset.id));
-    if(r){
-      const prod = r.produits.find(pObj=>pObj.id===p.dataset.id);
-      if(prod) prod.nom = nv;
-    }
-    updateLocalStorage();
-  });
-
-  // Changement état coché
-  cb.addEventListener('change', ()=>{
-    const rayonEl = p.closest('.rayon');
-    const r = localData.find(r=>r.id===rayonEl.dataset.id);
-    if(!r) return;
-    const prod = r.produits.find(x=>x.id===p.dataset.id);
-    if(prod) prod.coche = cb.checked;
-
-    p.classList.toggle('produit-coche', cb.checked);
-
+  cb.onchange = () => {
+    p.coche = cb.checked;
+    el.classList.toggle('checked', cb.checked);
     r.produits.sort((a,b)=>a.coche-b.coche);
-
-    const cont = rayonEl.querySelector('.produits-container');
-    r.produits.forEach(pObj=>{
-      const el = cont.querySelector(`.produit[data-id="${pObj.id}"]`);
-      if(el) cont.appendChild(el);
+    r.produits.forEach(pr=>{
+      const pe = el.parentElement.querySelector(`[data-id="${pr.id}"]`);
+      pe && el.parentElement.appendChild(pe);
     });
-
     updateLocalStorage();
-  });
+  };
 
-  // Supprimer produit
-  p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
-    const r = localData.find(r=>r.produits.some(pObj=>pObj.id===p.dataset.id));
-    if(r) r.produits = r.produits.filter(x=>x.id!==p.dataset.id);
-    p.remove();
+  el.onclick = () => actions.classList.add('show');
+
+  enableInlineEdit(name, nv => p.nom = nv);
+
+  el.querySelector('.btn-supprimer-produit').onclick = () => {
+    r.produits = r.produits.filter(x => x.id !== p.id);
+    el.remove();
     updateLocalStorage();
-  });
+  };
 
-  container.appendChild(p);
+  return el;
 }
 
 /* =================================================
    DRAG & DROP
 ================================================= */
-rayonsContainer.addEventListener('dragstart', e=>e.target.classList.add('dragging'));
-rayonsContainer.addEventListener('dragend', e=>{
-  e.target.classList.remove('dragging');
-  const order = [...rayonsContainer.children].map(r=>r.dataset.id);
+rayonsContainer.addEventListener('dragstart', e => {
+  const r = e.target.closest('.rayon');
+  if (!r) return;
+  r.classList.add('dragging');
+});
+
+rayonsContainer.addEventListener('dragend', e => {
+  const r = e.target.closest('.rayon');
+  if (!r) return;
+  r.classList.remove('dragging');
+  const order = [...rayonsContainer.children].map(x => x.dataset.id);
   localData.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
   updateLocalStorage();
 });
 
-rayonsContainer.addEventListener('dragover', e=>{
+rayonsContainer.addEventListener('dragover', e => {
   e.preventDefault();
   const dragging = document.querySelector('.dragging');
-  const after=[...rayonsContainer.children]
-    .find(r=>e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+  const after = [...rayonsContainer.children]
+    .find(r => e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
   after ? rayonsContainer.insertBefore(dragging, after)
         : rayonsContainer.appendChild(dragging);
 });
 
-function initTouchDrag(rayon){
-  const btn = rayon.querySelector('.btn-deplacer-rayon');
-  let dragging=false;
-
-  btn.addEventListener('touchstart', e=>{
-    dragging=true;
-    rayon.classList.add('dragging');
-    e.preventDefault();
-  },{passive:false});
-
-  btn.addEventListener('touchmove', e=>{
-    if(!dragging) return;
-    const after=[...rayonsContainer.children]
-      .find(r=>e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
-    after ? rayonsContainer.insertBefore(rayon, after)
-          : rayonsContainer.appendChild(rayon);
-    e.preventDefault();
-  },{passive:false});
-
-  btn.addEventListener('touchend', ()=>{
-    dragging=false;
-    rayon.classList.remove('dragging');
-    updateLocalStorage();
-  });
-}
-
 /* =================================================
    INIT
 ================================================= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  if(!loadFromLocal()) loadFromServer();
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('listeCourses');
+  if (saved) {
+    localData = JSON.parse(saved);
+    rebuildDOM();
+  }
 });
 
-/* =================================================
-   AJOUT RAYON
-================================================= */
-ajouterRayonBtn.addEventListener('click', ()=>{
-  const nom = nomRayonInput.value.trim();
-  if(!nom) return;
-  const r={id:crypto.randomUUID(),nom,collapsed:false,produits:[]};
-  localData.push(r);
-  rayonsContainer.appendChild(createRayon(nom,r.id));
-  nomRayonInput.value='';
+ajouterRayonBtn.onclick = () => {
+  const v = nomRayonInput.value.trim();
+  if (!v) return;
+  localData.push({ id: crypto.randomUUID(), nom: v, collapsed: false, produits: [] });
+  rebuildDOM();
+  nomRayonInput.value = '';
   updateLocalStorage();
-});
-
-nomRayonInput.addEventListener('keydown', e=>{
-  if(e.key==='Enter') ajouterRayonBtn.click();
-});
-
-/* =================================================
-   CLIC GLOBAL : masquer les croix si clic en dehors
-================================================= */
-document.addEventListener('click', e => {
-  document.querySelectorAll('.rayon-actions.show').forEach(btns => {
-    const rayon = btns.closest('.rayon');
-    if (!rayon.contains(e.target)) btns.classList.remove('show');
-  });
-  document.querySelectorAll('.produit-actions.show').forEach(btns => {
-    const produit = btns.closest('.produit');
-    if (!produit.contains(e.target)) btns.classList.remove('show');
-  });
-});
+};
