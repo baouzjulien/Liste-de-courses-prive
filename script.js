@@ -11,7 +11,7 @@ let localData = [];
 /* =================================================
    UTILITAIRES
 ================================================= */
-
+// Simple fonction de debounce
 function debounce(fn, delay = 200) {
   let t;
   return (...args) => {
@@ -19,7 +19,7 @@ function debounce(fn, delay = 200) {
     t = setTimeout(() => fn.apply(null, args), delay);
   };
 }
-
+// Normalisation chaîne de caractères pour comparaison
 function normalize(str) {
   return str
     .toLowerCase()
@@ -251,7 +251,7 @@ function initRayonActions(rayon){
 }
 
 /* =================================================
-   COMPOSANT PRODUIT (INCHANGÉ)
+   COMPOSANT PRODUIT
 ================================================= */
 
 function addProduit(container, nom, id=null, coche=false){
