@@ -11,64 +11,69 @@ let localData = [];
 /* =================================================
    UTILITAIRES
 ================================================= */
-const debounce = (fn, delay = 200) => {
+function debounce(fn, delay = 200) {
   let t;
   return (...args) => {
     clearTimeout(t);
     t = setTimeout(() => fn.apply(null, args), delay);
   };
-};
+}
 
-const normalize = str => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function normalize(str) {
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
 
 /* =================================================
    SAUVEGARDE LOCALE + SERVEUR
 ================================================= */
-const updateLocalStorage = () => {
+function updateLocalStorage() {
   localStorage.setItem('listeCourses', JSON.stringify(localData));
   debounceSaveServer();
-};
+}
 
 let saveTimeout = null;
-const debounceSaveServer = (delay = 1000) => {
-  if(saveTimeout) clearTimeout(saveTimeout);
+function debounceSaveServer(delay = 1000) {
+  if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => saveToServer(localData), delay);
-};
+}
 
-const saveToServer = async (data) => {
+async function saveToServer(data) {
   try {
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-  } catch(err) {
+    await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  } catch (err) {
     console.error("Erreur save API :", err);
   }
-};
+}
 
 /* =================================================
    AUTOCOMPLÉTION PRODUITS
 ================================================= */
-const findLocalMatch = (rayonId, value) => {
+function findLocalMatch(rayonId, value) {
   const r = localData.find(r => r.id === rayonId);
-  if(!r) return null;
+  if (!r) return null;
   const v = normalize(value);
   return r.produits
-          .slice()
-          .sort((a,b)=>a.coche-b.coche)
-          .find(p => normalize(p.nom).startsWith(v));
-};
+    .slice()
+    .sort((a, b) => a.coche - b.coche)
+    .find(p => normalize(p.nom).startsWith(v));
+}
 
-const findGlobalMatch = (value) => {
+function findGlobalMatch(value) {
   const v = normalize(value);
-  for(const r of localData){
+  for (const r of localData) {
     const match = r.produits.find(p => normalize(p.nom).startsWith(v));
-    if(match) return match;
+    if (match) return match;
   }
   return null;
-};
+}
 
 /* =================================================
    REBUILD DOM
 ================================================= */
-const rebuildDOM = () => {
+function rebuildDOM() {
   rayonsContainer.innerHTML = "";
   localData.forEach(r => {
     const rayon = createRayon(r.nom, r.id, r.collapsed);
@@ -76,39 +81,39 @@ const rebuildDOM = () => {
 
     r.produits
       .slice()
-      .sort((a,b)=>a.coche-b.coche)
+      .sort((a, b) => a.coche - b.coche)
       .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
 
     rayonsContainer.appendChild(rayon);
   });
-};
+}
 
 /* =================================================
    CHARGEMENT DONNÉES
 ================================================= */
-const loadFromLocal = () => {
+function loadFromLocal() {
   const saved = localStorage.getItem('listeCourses');
-  if(!saved) return false;
+  if (!saved) return false;
   localData = JSON.parse(saved);
   rebuildDOM();
   return true;
-};
+}
 
-const loadFromServer = async () => {
-  try{
+async function loadFromServer() {
+  try {
     const res = await fetch(API_URL);
     localData = await res.json();
     rebuildDOM();
     updateLocalStorage();
-  } catch(err){
+  } catch (err) {
     console.error("Erreur load API :", err);
   }
-};
+}
 
 /* =================================================
    COMPOSANT RAYON
 ================================================= */
-const createRayon = (nom, id = null, collapsed = false) => {
+function createRayon(nom, id = null, collapsed = false) {
   const rayon = document.createElement('div');
   rayon.className = 'rayon';
   rayon.dataset.id = id || crypto.randomUUID();
@@ -133,12 +138,12 @@ const createRayon = (nom, id = null, collapsed = false) => {
   initRayonActions(rayon);
   initTouchDrag(rayon);
   return rayon;
-};
+}
 
 /* =================================================
    ACTIONS SUR RAYON
 ================================================= */
-const initRayonActions = (rayon) => {
+function initRayonActions(rayon){
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
   const inputProd = rayon.querySelector('.nouveau-produit');
@@ -168,26 +173,59 @@ const initRayonActions = (rayon) => {
   });
 
   // Edition inline rayon
-  enableInlineEdit(titre, rayon.dataset.id, "rayon");
-  
-  // Autocomplétion + ajout produit
+  titre.addEventListener('dblclick', ()=>{
+    titre.contentEditable = "true";
+    titre.focus();
+    document.execCommand('selectAll', false, null);
+  });
+
+  // Validation / annulation
+  titre.addEventListener('keydown', e=>{
+    if(e.key === "Enter"){
+      e.preventDefault();
+      titre.contentEditable = "false";
+      const nv = titre.textContent.trim();
+      if(!nv) return;
+      const r = localData.find(r=>r.id===rayon.dataset.id);
+      if(r) r.nom = nv;
+      updateLocalStorage();
+    }
+    if(e.key === "Escape"){
+      e.preventDefault();
+      titre.contentEditable = "false";
+      titre.textContent = localData.find(r=>r.id===rayon.dataset.id).nom;
+    }
+  });
+  titre.addEventListener('blur', ()=>{
+    titre.contentEditable = "false";
+    const nv = titre.textContent.trim();
+    if(!nv) return;
+    const r = localData.find(r=>r.id===rayon.dataset.id);
+    if(r) r.nom = nv;
+    updateLocalStorage();
+  });
+
+  // Autocomplétion produit
   let lastSuggestion = null;
   const debouncedAutocomplete = debounce(()=>{
     const value = inputProd.value;
     if(!value) return;
-    const match = findLocalMatch(rayon.dataset.id, value) || findGlobalMatch(value);
+    const match =
+      findLocalMatch(rayon.dataset.id, value) ||
+      findGlobalMatch(value);
     if(!match) return;
     lastSuggestion = match.nom;
     inputProd.value = match.nom;
     inputProd.setSelectionRange(value.length, match.nom.length);
   });
+
   inputProd.addEventListener('input', debouncedAutocomplete);
 
   inputProd.addEventListener('keydown', e=>{
     if(e.key==='Tab' && lastSuggestion){
       e.preventDefault();
       inputProd.value = lastSuggestion;
-      inputProd.setSelectionRange(lastSuggestion.length, lastSuggestion.length);
+      inputProd.setSelectionRange(lastSuggestion.length,lastSuggestion.length);
     }
   });
 
@@ -199,64 +237,23 @@ const initRayonActions = (rayon) => {
     if(!r) return;
     const exists = r.produits.some(p => normalize(p.nom)===normalize(val));
     if(exists){
-      inputProd.value=''; lastSuggestion=null; return;
+      inputProd.value='';
+      lastSuggestion=null;
+      return;
     }
     const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
     r.produits.push(pObj);
     addProduit(contProd, val, pObj.id);
-    inputProd.value=''; lastSuggestion=null;
+    inputProd.value='';
+    lastSuggestion=null;
     updateLocalStorage();
   });
-};
-
-/* =================================================
-   ÉDITION INLINE MODERNE (rayon ou produit)
-================================================= */
-const enableInlineEdit = (el, id, type="rayon") => {
-  el.addEventListener('dblclick', ()=>{
-    el.contentEditable = "true";
-    el.focus();
-
-    // Sélection du texte
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    const finishEdit = () => {
-      el.contentEditable = "false";
-      const nv = el.textContent.trim();
-      if(!nv) { el.textContent = type==="rayon" ? "Rayon" : "Produit"; }
-      if(type==="rayon"){
-        const r = localData.find(r=>r.id===id);
-        if(r) r.nom = el.textContent;
-      } else {
-        const r = localData.find(r=>r.produits.some(p=>p.id===id));
-        if(r){
-          const prod = r.produits.find(p=>p.id===id);
-          if(prod) prod.nom = el.textContent;
-        }
-      }
-      updateLocalStorage();
-      el.removeEventListener('blur', finishEdit);
-      el.removeEventListener('keydown', onEnter);
-    };
-
-    const onEnter = e=>{
-      if(e.key==="Enter"){ e.preventDefault(); el.blur(); }
-      if(e.key==="Escape"){ e.preventDefault(); el.blur(); el.textContent = type==="rayon" ? localData.find(r=>r.id===id).nom : localData.find(r=>r.produits.some(p=>p.id===id)).produits.find(p=>p.id===id).nom; }
-    };
-
-    el.addEventListener('blur', finishEdit);
-    el.addEventListener('keydown', onEnter);
-  });
-};
+}
 
 /* =================================================
    COMPOSANT PRODUIT
 ================================================= */
-const addProduit = (container, nom, id=null, coche=false) => {
+function addProduit(container, nom, id=null, coche=false){
   const p = document.createElement('div');
   p.className='produit';
   p.dataset.id = id||crypto.randomUUID();
@@ -276,13 +273,56 @@ const addProduit = (container, nom, id=null, coche=false) => {
   cb.checked = coche;
   p.classList.toggle('produit-coche', coche);
 
-  // Toggle suppression sur click
-  p.addEventListener('click', ()=>{ if(!actions.classList.contains('show')) actions.classList.add('show'); });
+  // Toggle suppression sur click produit
+  p.addEventListener('click', ()=>{
+    if(!actions.classList.contains('show')) actions.classList.add('show');
+  });
 
   // Edition inline produit
-  enableInlineEdit(nomSpan, p.dataset.id, "produit");
+  nomSpan.addEventListener('dblclick', ()=>{
+    nomSpan.contentEditable = "true";
+    nomSpan.focus();
+    document.execCommand('selectAll', false, null);
+  });
 
-  // Changement état coché + tri
+  // Validation / annulation
+  nomSpan.addEventListener('keydown', e=>{
+    if(e.key==="Enter"){
+      e.preventDefault();
+      nomSpan.contentEditable = "false";
+      const nv = nomSpan.textContent.trim();
+      if(!nv) return;
+      const r = localData.find(r=>r.produits.some(pObj=>pObj.id===p.dataset.id));
+      if(r){
+        const prod = r.produits.find(pObj=>pObj.id===p.dataset.id);
+        if(prod) prod.nom = nv;
+      }
+      updateLocalStorage();
+    }
+    if(e.key==="Escape"){
+      e.preventDefault();
+      nomSpan.contentEditable = "false";
+      const r = localData.find(r=>r.produits.some(pObj=>pObj.id===p.dataset.id));
+      if(r){
+        const prod = r.produits.find(pObj=>pObj.id===p.dataset.id);
+        if(prod) nomSpan.textContent = prod.nom;
+      }
+    }
+  });
+
+  nomSpan.addEventListener('blur', ()=>{
+    nomSpan.contentEditable = "false";
+    const nv = nomSpan.textContent.trim();
+    if(!nv) return;
+    const r = localData.find(r=>r.produits.some(pObj=>pObj.id===p.dataset.id));
+    if(r){
+      const prod = r.produits.find(pObj=>pObj.id===p.dataset.id);
+      if(prod) prod.nom = nv;
+    }
+    updateLocalStorage();
+  });
+
+  // Changement état coché
   cb.addEventListener('change', ()=>{
     const rayonEl = p.closest('.rayon');
     const r = localData.find(r=>r.id===rayonEl.dataset.id);
@@ -312,7 +352,7 @@ const addProduit = (container, nom, id=null, coche=false) => {
   });
 
   container.appendChild(p);
-};
+}
 
 /* =================================================
    DRAG & DROP
@@ -328,33 +368,53 @@ rayonsContainer.addEventListener('dragend', e=>{
 rayonsContainer.addEventListener('dragover', e=>{
   e.preventDefault();
   const dragging = document.querySelector('.dragging');
-  const after = [...rayonsContainer.children].find(r => e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
-  after ? rayonsContainer.insertBefore(dragging, after) : rayonsContainer.appendChild(dragging);
+  const after=[...rayonsContainer.children]
+    .find(r=>e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+  after ? rayonsContainer.insertBefore(dragging, after)
+        : rayonsContainer.appendChild(dragging);
 });
 
-const initTouchDrag = (rayon) => {
+function initTouchDrag(rayon){
   const btn = rayon.querySelector('.btn-deplacer-rayon');
-  let dragging = false;
+  let dragging=false;
 
   btn.addEventListener('touchstart', e=>{
-    dragging = true;
+    dragging=true;
     rayon.classList.add('dragging');
     e.preventDefault();
   },{passive:false});
 
   btn.addEventListener('touchmove', e=>{
     if(!dragging) return;
-    const after = [...rayonsContainer.children].find(r => e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
-    after ? rayonsContainer.insertBefore(rayon, after) : rayonsContainer.appendChild(rayon);
+    const after=[...rayonsContainer.children]
+      .find(r=>e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+    after ? rayonsContainer.insertBefore(rayon, after)
+          : rayonsContainer.appendChild(rayon);
     e.preventDefault();
   },{passive:false});
 
   btn.addEventListener('touchend', ()=>{
-    dragging = false;
+    dragging=false;
     rayon.classList.remove('dragging');
     updateLocalStorage();
   });
-};
+}
+
+/* =================================================
+   INTERACTIONS GLOBALES (clic en dehors pour masquer les croix)
+================================================= */
+document.addEventListener('click', e => {
+  // Masquer croix rayons
+  document.querySelectorAll('.rayon-actions.show').forEach(btns => {
+    const rayon = btns.closest('.rayon');
+    if (!rayon.contains(e.target)) btns.classList.remove('show');
+  });
+  // Masquer croix produits
+  document.querySelectorAll('.produit-actions.show').forEach(btns => {
+    const produit = btns.closest('.produit');
+    if (!produit.contains(e.target)) btns.classList.remove('show');
+  });
+});
 
 /* =================================================
    INIT
@@ -369,25 +429,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
 ajouterRayonBtn.addEventListener('click', ()=>{
   const nom = nomRayonInput.value.trim();
   if(!nom) return;
-  const r = {id: crypto.randomUUID(), nom, collapsed:false, produits:[]};
+  const r={id:crypto.randomUUID(),nom,collapsed:false,produits:[]};
   localData.push(r);
-  rayonsContainer.appendChild(createRayon(nom, r.id));
+  rayonsContainer.appendChild(createRayon(nom,r.id));
   nomRayonInput.value='';
   updateLocalStorage();
 });
 
-nomRayonInput.addEventListener('keydown', e=>{ if(e.key==='Enter') ajouterRayonBtn.click(); });
-
-/* =================================================
-   CLIC GLOBAL : masquer les croix si clic en dehors
-================================================= */
-document.addEventListener('click', e=>{
-  document.querySelectorAll('.rayon-actions.show').forEach(btns=>{
-    const rayon = btns.closest('.rayon');
-    if(!rayon.contains(e.target)) btns.classList.remove('show');
-  });
-  document.querySelectorAll('.produit-actions.show').forEach(btns=>{
-    const produit = btns.closest('.produit');
-    if(!produit.contains(e.target)) btns.classList.remove('show');
-  });
+nomRayonInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') ajouterRayonBtn.click();
 });
