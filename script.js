@@ -12,7 +12,6 @@ let localData = [];
    UTILITAIRES
 ================================================= */
 
-// debounce générique
 function debounce(fn, delay = 200) {
   let t;
   return (...args) => {
@@ -21,7 +20,6 @@ function debounce(fn, delay = 200) {
   };
 }
 
-// normalisation accents + casse
 function normalize(str) {
   return str
     .toLowerCase()
@@ -56,10 +54,9 @@ async function saveToServer(data) {
 }
 
 /* =================================================
-   RECHERCHE / AUTOCOMPLÉTION
+   AUTOCOMPLÉTION PRODUITS
 ================================================= */
 
-// recherche locale prioritaire (produits non cochés d’abord)
 function findLocalMatch(rayonId, value) {
   const r = localData.find(r => r.id === rayonId);
   if (!r) return null;
@@ -72,10 +69,8 @@ function findLocalMatch(rayonId, value) {
     .find(p => normalize(p.nom).startsWith(v));
 }
 
-// fallback recherche globale
 function findGlobalMatch(value) {
   const v = normalize(value);
-
   for (const r of localData) {
     const match = r.produits.find(p =>
       normalize(p.nom).startsWith(v)
@@ -131,11 +126,11 @@ async function loadFromServer() {
    COMPOSANT RAYON
 ================================================= */
 
-function createRayon(nom, id = null, collapsed = false) {
+function createRayon(nom, id=null, collapsed=false) {
   const rayon = document.createElement('div');
   rayon.className = 'rayon';
   rayon.dataset.id = id || crypto.randomUUID();
-  rayon.setAttribute('draggable', 'true');
+  rayon.setAttribute('draggable','true');
 
   rayon.innerHTML = `
     <div class="rayon-header">
@@ -160,57 +155,53 @@ function createRayon(nom, id = null, collapsed = false) {
 }
 
 /* =================================================
-   ACTIONS RAYON
+   ACTIONS SUR RAYON
 ================================================= */
 
-function initRayonActions(rayon) {
+function initRayonActions(rayon){
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
   const btnMod = rayon.querySelector('.btn-modifier-rayon');
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
 
-  /* Collapse */
-  header.addEventListener('click', e => {
-    if (e.target.closest('button')) return;
+  header.addEventListener('click', e=>{
+    if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    if (r) r.collapsed = rayon.classList.contains('collapsed');
+    const r = localData.find(r=>r.id===rayon.dataset.id);
+    if(r) r.collapsed = rayon.classList.contains('collapsed');
     updateLocalStorage();
   });
 
-  /* Supprimer rayon */
-  btnSup.addEventListener('click', () => {
-    localData = localData.filter(r => r.id !== rayon.dataset.id);
+  btnSup.addEventListener('click', ()=>{
+    localData = localData.filter(r=>r.id!==rayon.dataset.id);
     rayon.remove();
     updateLocalStorage();
   });
 
-  /* Modifier rayon */
-  btnMod.addEventListener('click', () => {
-    const h2 = rayon.querySelector('h2');
-    const nv = prompt("Nouveau nom:", h2.textContent);
-    if (!nv) return;
-    h2.textContent = nv;
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    if (r) r.nom = nv;
+  btnMod.addEventListener('click', ()=>{
+    const titre = rayon.querySelector('h2');
+    const nv = prompt("Nouveau nom:", titre.textContent.trim());
+    if(!nv) return;
+    titre.textContent = nv;
+    const r = localData.find(r=>r.id===rayon.dataset.id);
+    if(r) r.nom = nv;
     updateLocalStorage();
   });
 
-  /* ==========================
-     AUTO-COMPLÉTION
-  ========================== */
+  /* ========= AUTOCOMPLÉTION ========= */
 
   let lastSuggestion = null;
 
-  const debouncedAutocomplete = debounce(() => {
+  const debouncedAutocomplete = debounce(()=>{
     const value = inputProd.value;
-    if (!value) return;
+    if(!value) return;
 
-    let match = findLocalMatch(rayon.dataset.id, value)
-             || findGlobalMatch(value);
+    const match =
+      findLocalMatch(rayon.dataset.id, value) ||
+      findGlobalMatch(value);
 
-    if (!match) return;
+    if(!match) return;
 
     lastSuggestion = match.nom;
     inputProd.value = match.nom;
@@ -219,12 +210,8 @@ function initRayonActions(rayon) {
 
   inputProd.addEventListener('input', debouncedAutocomplete);
 
-  /* ==========================
-     TAB = accepter suggestion
-  ========================== */
-
-  inputProd.addEventListener('keydown', e => {
-    if (e.key === 'Tab' && lastSuggestion) {
+  inputProd.addEventListener('keydown', e=>{
+    if(e.key==='Tab' && lastSuggestion){
       e.preventDefault();
       inputProd.value = lastSuggestion;
       inputProd.setSelectionRange(
@@ -234,71 +221,81 @@ function initRayonActions(rayon) {
     }
   });
 
-  /* ==========================
-     ENTER = ajout / anti-doublon
-  ========================== */
-
-  inputProd.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
+  inputProd.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
 
     const val = inputProd.value.trim();
-    if (!val) return;
+    if(!val) return;
 
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    if (!r) return;
+    const r = localData.find(r=>r.id===rayon.dataset.id);
+    if(!r) return;
 
     const exists = r.produits.some(p =>
       normalize(p.nom) === normalize(val)
     );
 
-    if (exists) {
+    if(exists){
       alert("Produit déjà présent");
-      inputProd.value = '';
-      lastSuggestion = null;
+      inputProd.value='';
+      lastSuggestion=null;
       return;
     }
 
-    const pObj = { id: crypto.randomUUID(), nom: val, coche: false };
+    const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
     r.produits.push(pObj);
     addProduit(contProd, val, pObj.id);
-    inputProd.value = '';
-    lastSuggestion = null;
+    inputProd.value='';
+    lastSuggestion=null;
     updateLocalStorage();
   });
 }
 
 /* =================================================
-   PRODUIT
+   COMPOSANT PRODUIT (INCHANGÉ)
 ================================================= */
 
-function addProduit(container, nom, id = null, coche = false) {
+function addProduit(container, nom, id=null, coche=false){
   const p = document.createElement('div');
-  p.className = 'produit';
-  p.dataset.id = id || crypto.randomUUID();
+  p.className='produit';
+  p.dataset.id = id||crypto.randomUUID();
 
   p.innerHTML = `
-    <input type="checkbox">
+    <input type="checkbox" class="produit-checkbox">
     <span class="produit-nom">${nom}</span>
-    <button class="btn-supprimer-produit">x</button>
+    <div class="produit-actions">
+      <button class="btn-modifier-produit">...</button>
+      <button class="btn-supprimer-produit">x</button>
+    </div>
   `;
 
-  const cb = p.querySelector('input');
+  const cb = p.querySelector('.produit-checkbox');
   cb.checked = coche;
   p.classList.toggle('produit-coche', coche);
 
-  cb.addEventListener('change', () => {
-    const rayon = p.closest('.rayon');
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    const prod = r.produits.find(x => x.id === p.dataset.id);
-    prod.coche = cb.checked;
+  cb.addEventListener('change', ()=>{
+    const rayonEl = p.closest('.rayon');
+    const r = localData.find(r=>r.id===rayonEl.dataset.id);
+    if(!r) return;
+
+    const prod = r.produits.find(x=>x.id===p.dataset.id);
+    if(prod) prod.coche = cb.checked;
+
     p.classList.toggle('produit-coche', cb.checked);
+
+    r.produits.sort((a,b)=>a.coche-b.coche);
+
+    const cont = rayonEl.querySelector('.produits-container');
+    r.produits.forEach(pObj=>{
+      const el = cont.querySelector(`.produit[data-id="${pObj.id}"]`);
+      if(el) cont.appendChild(el);
+    });
+
     updateLocalStorage();
   });
 
-  p.querySelector('.btn-supprimer-produit').addEventListener('click', () => {
-    const rayon = p.closest('.rayon');
-    const r = localData.find(r => r.id === rayon.dataset.id);
-    r.produits = r.produits.filter(x => x.id !== p.dataset.id);
+  p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
+    const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
+    if(r) r.produits = r.produits.filter(x=>x.id!==p.dataset.id);
     p.remove();
     updateLocalStorage();
   });
@@ -307,45 +304,47 @@ function addProduit(container, nom, id = null, coche = false) {
 }
 
 /* =================================================
-   DRAG & DROP (PC + MOBILE)
+   DRAG & DROP
 ================================================= */
 
-rayonsContainer.addEventListener('dragstart', e => e.target.classList.add('dragging'));
-rayonsContainer.addEventListener('dragend', e => {
+rayonsContainer.addEventListener('dragstart', e=>e.target.classList.add('dragging'));
+rayonsContainer.addEventListener('dragend', e=>{
   e.target.classList.remove('dragging');
-  const order = [...rayonsContainer.children].map(r => r.dataset.id);
-  localData.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const order = [...rayonsContainer.children].map(r=>r.dataset.id);
+  localData.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
   updateLocalStorage();
 });
 
-rayonsContainer.addEventListener('dragover', e => {
+rayonsContainer.addEventListener('dragover', e=>{
   e.preventDefault();
   const dragging = document.querySelector('.dragging');
   const after = [...rayonsContainer.children]
-    .find(r => e.clientY < r.getBoundingClientRect().top + r.offsetHeight / 2);
-  after ? rayonsContainer.insertBefore(dragging, after) : rayonsContainer.appendChild(dragging);
+    .find(r=>e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+  after ? rayonsContainer.insertBefore(dragging, after)
+        : rayonsContainer.appendChild(dragging);
 });
 
-function initTouchDrag(rayon) {
+function initTouchDrag(rayon){
   const btn = rayon.querySelector('.btn-deplacer-rayon');
-  let dragging = false;
+  let dragging=false;
 
-  btn.addEventListener('touchstart', e => {
-    dragging = true;
+  btn.addEventListener('touchstart', e=>{
+    dragging=true;
     rayon.classList.add('dragging');
     e.preventDefault();
-  }, { passive: false });
+  },{passive:false});
 
-  btn.addEventListener('touchmove', e => {
-    if (!dragging) return;
-    const after = [...rayonsContainer.children]
-      .find(r => e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight / 2);
-    after ? rayonsContainer.insertBefore(rayon, after) : rayonsContainer.appendChild(rayon);
+  btn.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const after=[...rayonsContainer.children]
+      .find(r=>e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+    after ? rayonsContainer.insertBefore(rayon, after)
+          : rayonsContainer.appendChild(rayon);
     e.preventDefault();
-  }, { passive: false });
+  },{passive:false});
 
-  btn.addEventListener('touchend', () => {
-    dragging = false;
+  btn.addEventListener('touchend', ()=>{
+    dragging=false;
     rayon.classList.remove('dragging');
     updateLocalStorage();
   });
@@ -355,25 +354,24 @@ function initTouchDrag(rayon) {
    INIT
 ================================================= */
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!loadFromLocal()) loadFromServer();
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(!loadFromLocal()) loadFromServer();
 });
 
 /* =================================================
    AJOUT RAYON
 ================================================= */
 
-ajouterRayonBtn.addEventListener('click', () => {
+ajouterRayonBtn.addEventListener('click', ()=>{
   const nom = nomRayonInput.value.trim();
-  if (!nom) return;
-
-  const r = { id: crypto.randomUUID(), nom, collapsed: false, produits: [] };
+  if(!nom) return;
+  const r={id:crypto.randomUUID(),nom,collapsed:false,produits:[]};
   localData.push(r);
-  rayonsContainer.appendChild(createRayon(nom, r.id));
-  nomRayonInput.value = '';
+  rayonsContainer.appendChild(createRayon(nom,r.id));
+  nomRayonInput.value='';
   updateLocalStorage();
 });
 
-nomRayonInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') ajouterRayonBtn.click();
+nomRayonInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') ajouterRayonBtn.click();
 });
