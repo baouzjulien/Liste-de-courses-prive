@@ -42,13 +42,8 @@ function debounceSaveServer(delay = 1000) {
 
 async function saveToServer(data) {
   try {
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  } catch (err) {
-    console.error("Erreur save API :", err);
-  }
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+  } catch (err) { console.error("Erreur save API :", err); }
 }
 
 /* =================================================
@@ -83,7 +78,7 @@ function rebuildDOM() {
     const cont = rayon.querySelector('.produits-container');
     r.produits
       .slice()
-      .sort((a, b) => a.coche - b.coche)
+      .sort((a,b)=>a.coche-b.coche)
       .forEach(p => addProduit(cont, p.nom, p.id, p.coche));
     rayonsContainer.appendChild(rayon);
   });
@@ -106,9 +101,7 @@ async function loadFromServer() {
     localData = await res.json();
     rebuildDOM();
     updateLocalStorage();
-  } catch (err) {
-    console.error("Erreur load API :", err);
-  }
+  } catch (err) { console.error("Erreur load API :", err); }
 }
 
 /* =================================================
@@ -123,11 +116,8 @@ function createRayon(nom, id=null, collapsed=false) {
   rayon.innerHTML = `
     <div class="rayon-header">
       <button class="btn-deplacer-rayon">☰</button>
-      <h2>${nom}</h2>
-      <div class="rayon-actions">
-        <button class="btn-modifier-rayon">...</button>
-        <button class="btn-supprimer-rayon">x</button>
-      </div>
+      <h2 class="rayon-nom">${nom}</h2>
+      <button class="btn-supprimer-rayon"></button>
     </div>
     <div class="produits-container"></div>
     <div class="rayon-footer">
@@ -135,7 +125,7 @@ function createRayon(nom, id=null, collapsed=false) {
     </div>
   `;
 
-  if (collapsed) rayon.classList.add('collapsed');
+  if(collapsed) rayon.classList.add('collapsed');
 
   initRayonActions(rayon);
   initTouchDrag(rayon);
@@ -148,11 +138,11 @@ function createRayon(nom, id=null, collapsed=false) {
 function initRayonActions(rayon){
   const header = rayon.querySelector('.rayon-header');
   const btnSup = rayon.querySelector('.btn-supprimer-rayon');
-  const btnMod = rayon.querySelector('.btn-modifier-rayon');
+  const nomH2 = rayon.querySelector('.rayon-nom');
   const inputProd = rayon.querySelector('.nouveau-produit');
   const contProd = rayon.querySelector('.produits-container');
 
-  // Collapse / expand
+  // Collapse/expand au clic sur header sauf bouton
   header.addEventListener('click', e=>{
     if(e.target.closest('button')) return;
     rayon.classList.toggle('collapsed');
@@ -168,40 +158,51 @@ function initRayonActions(rayon){
     updateLocalStorage();
   });
 
-  // Modifier nom rayon
-  btnMod.addEventListener('click', ()=>{
-    const titre = rayon.querySelector('h2');
-    const nv = prompt("Nouveau nom:", titre.textContent.trim());
-    if(!nv) return;
-    titre.textContent = nv;
-    const r = localData.find(r=>r.id===rayon.dataset.id);
-    if(r) r.nom = nv;
-    updateLocalStorage();
+  /* ======= MODIFICATION INLINE RAYON ======= */
+  nomH2.addEventListener('dblclick', ()=>{
+    nomH2.contentEditable=true;
+    nomH2.focus();
+    document.execCommand('selectAll', false, null);
+
+    const saveEdit = (e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const newVal = nomH2.textContent.trim();
+        if(newVal){
+          const r = localData.find(r=>r.id===rayon.dataset.id);
+          if(r) r.nom = newVal;
+        }
+        nomH2.contentEditable=false;
+        updateLocalStorage();
+        nomH2.removeEventListener('keydown', saveEdit);
+      } else if(e.key==='Escape'){
+        nomH2.textContent = localData.find(r=>r.id===rayon.dataset.id).nom;
+        nomH2.contentEditable=false;
+        nomH2.removeEventListener('keydown', saveEdit);
+      }
+    };
+    nomH2.addEventListener('keydown', saveEdit);
   });
 
-  /* ======= AUTOCOMPLÉTION + AJOUT PRODUIT ======= */
+  /* ======= AUTOCOMPLÉTION PRODUIT ======= */
   let lastSuggestion = null;
   const debouncedAutocomplete = debounce(()=>{
     const value = inputProd.value;
     if(!value) return;
-
     const match =
-      findLocalMatch(rayon.dataset.id, value) ||
+      findLocalMatch(rayon.dataset.id,value) ||
       findGlobalMatch(value);
-
     if(!match) return;
-
     lastSuggestion = match.nom;
     inputProd.value = match.nom;
     inputProd.setSelectionRange(value.length, match.nom.length);
   });
-
   inputProd.addEventListener('input', debouncedAutocomplete);
 
   inputProd.addEventListener('keydown', e=>{
     if(e.key==='Tab' && lastSuggestion){
       e.preventDefault();
-      inputProd.value = lastSuggestion;
+      inputProd.value=lastSuggestion;
       inputProd.setSelectionRange(lastSuggestion.length,lastSuggestion.length);
     }
   });
@@ -214,22 +215,16 @@ function initRayonActions(rayon){
     const r = localData.find(r=>r.id===rayon.dataset.id);
     if(!r) return;
 
-    const exists = r.produits.some(p =>
-      normalize(p.nom) === normalize(val)
-    );
-
+    const exists = r.produits.some(p=>normalize(p.nom)===normalize(val));
     if(exists){
-      // focus sur le produit existant
-      const prodEl = contProd.querySelector('.produit-nom');
-      prodEl && prodEl.focus();
       inputProd.value='';
       lastSuggestion=null;
       return;
     }
 
-    const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
+    const pObj = { id: crypto.randomUUID(), nom:val, coche:false };
     r.produits.push(pObj);
-    addProduit(contProd, val, pObj.id);
+    addProduit(contProd,val,pObj.id);
     inputProd.value='';
     lastSuggestion=null;
     updateLocalStorage();
@@ -237,7 +232,7 @@ function initRayonActions(rayon){
 }
 
 /* =================================================
-   COMPOSANT PRODUIT
+   PRODUIT
 ================================================= */
 function addProduit(container, nom, id=null, coche=false){
   const p = document.createElement('div');
@@ -247,28 +242,22 @@ function addProduit(container, nom, id=null, coche=false){
   p.innerHTML = `
     <input type="checkbox" class="produit-checkbox">
     <span class="produit-nom">${nom}</span>
-    <div class="produit-actions">
-      <button class="btn-supprimer-produit"></button>
-    </div>
+    <button class="btn-supprimer-produit"></button>
   `;
 
   const cb = p.querySelector('.produit-checkbox');
   const nomSpan = p.querySelector('.produit-nom');
   cb.checked = coche;
-  p.classList.toggle('produit-coche', coche);
+  p.classList.toggle('produit-coche',coche);
 
-  // Toggle check
   cb.addEventListener('change', ()=>{
     const rayonEl = p.closest('.rayon');
     const r = localData.find(r=>r.id===rayonEl.dataset.id);
     if(!r) return;
-
     const prod = r.produits.find(x=>x.id===p.dataset.id);
-    if(prod) prod.coche = cb.checked;
+    if(prod) prod.coche=cb.checked;
+    p.classList.toggle('produit-coche',cb.checked);
 
-    p.classList.toggle('produit-coche', cb.checked);
-
-    // Trier décochés en haut
     r.produits.sort((a,b)=>a.coche-b.coche);
     const cont = rayonEl.querySelector('.produits-container');
     r.produits.forEach(pObj=>{
@@ -279,7 +268,6 @@ function addProduit(container, nom, id=null, coche=false){
     updateLocalStorage();
   });
 
-  // Suppression produit
   p.querySelector('.btn-supprimer-produit').addEventListener('click', ()=>{
     const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
     if(r) r.produits = r.produits.filter(x=>x.id!==p.dataset.id);
@@ -287,34 +275,33 @@ function addProduit(container, nom, id=null, coche=false){
     updateLocalStorage();
   });
 
-  // Modification inline
-  nomSpan.addEventListener('click', ()=> {
-    nomSpan.contentEditable = true;
+  // Modification produit après double-clic
+  nomSpan.addEventListener('dblclick', ()=>{
+    nomSpan.contentEditable=true;
     nomSpan.focus();
     document.execCommand('selectAll', false, null);
 
-    const saveEdit = (e) => {
-      if(e.key === 'Enter'){
+    const saveEdit = e=>{
+      if(e.key==='Enter'){
         e.preventDefault();
         const newVal = nomSpan.textContent.trim();
-        const r = localData.find(r => r.id === p.closest('.rayon').dataset.id);
+        const r = localData.find(r=>r.id===p.closest('.rayon').dataset.id);
         const exists = r.produits.some(prod => normalize(prod.nom)===normalize(newVal) && prod.id!==p.dataset.id);
         if(newVal && !exists){
           const prod = r.produits.find(prod => prod.id===p.dataset.id);
-          prod.nom = newVal;
+          prod.nom=newVal;
         } else {
           nomSpan.textContent = p.querySelector('.produit-nom').textContent;
         }
-        nomSpan.contentEditable = false;
+        nomSpan.contentEditable=false;
         updateLocalStorage();
-        cleanup();
+        nomSpan.removeEventListener('keydown', saveEdit);
       } else if(e.key==='Escape'){
         nomSpan.textContent = p.querySelector('.produit-nom').textContent;
-        nomSpan.contentEditable = false;
-        cleanup();
+        nomSpan.contentEditable=false;
+        nomSpan.removeEventListener('keydown', saveEdit);
       }
     };
-    const cleanup = ()=> nomSpan.removeEventListener('keydown', saveEdit);
     nomSpan.addEventListener('keydown', saveEdit);
   });
 
@@ -335,34 +322,22 @@ rayonsContainer.addEventListener('dragend', e=>{
 rayonsContainer.addEventListener('dragover', e=>{
   e.preventDefault();
   const dragging = document.querySelector('.dragging');
-  const after = [...rayonsContainer.children]
-    .find(r=>e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
-  after ? rayonsContainer.insertBefore(dragging, after)
-        : rayonsContainer.appendChild(dragging);
+  const after = [...rayonsContainer.children].find(r=>e.clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+  after ? rayonsContainer.insertBefore(dragging,after) : rayonsContainer.appendChild(dragging);
 });
 
 function initTouchDrag(rayon){
   const btn = rayon.querySelector('.btn-deplacer-rayon');
   let dragging=false;
 
-  btn.addEventListener('touchstart', e=>{
-    dragging=true; rayon.classList.add('dragging'); e.preventDefault();
-  },{passive:false});
-
+  btn.addEventListener('touchstart', e=>{ dragging=true; rayon.classList.add('dragging'); e.preventDefault(); },{passive:false});
   btn.addEventListener('touchmove', e=>{
     if(!dragging) return;
-    const after=[...rayonsContainer.children]
-      .find(r=>e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
-    after ? rayonsContainer.insertBefore(rayon, after)
-          : rayonsContainer.appendChild(rayon);
+    const after=[...rayonsContainer.children].find(r=>e.touches[0].clientY < r.getBoundingClientRect().top + r.offsetHeight/2);
+    after ? rayonsContainer.insertBefore(rayon,after) : rayonsContainer.appendChild(rayon);
     e.preventDefault();
   },{passive:false});
-
-  btn.addEventListener('touchend', ()=>{
-    dragging=false;
-    rayon.classList.remove('dragging');
-    updateLocalStorage();
-  });
+  btn.addEventListener('touchend', ()=>{ dragging=false; rayon.classList.remove('dragging'); updateLocalStorage(); });
 }
 
 /* =================================================

@@ -29,9 +29,14 @@ h1 { text-align:center; margin-bottom:1rem; padding:0.5rem; background:#828181; 
 .rayon-header h2 { margin:0; flex:1; display:flex; align-items:center; gap:0.5rem; }
 .btn-deplacer-rayon { background:none; border:none; font-size:1.2rem; padding:0; cursor:grab; color:#b1b0b0; }
 .btn-deplacer-rayon:active { cursor:grabbing; }
+.btn-supprimer-rayon { width:18px; height:18px; position:relative; cursor:pointer; }
+.btn-supprimer-rayon::before,
+.btn-supprimer-rayon::after { content:''; position:absolute; top:50%; left:50%; width:12px; height:2px; background:#666; }
+.btn-supprimer-rayon::before { transform:translate(-50%,-50%) rotate(45deg); }
+.btn-supprimer-rayon::after { transform:translate(-50%,-50%) rotate(-45deg); }
+
 .rayon-footer { display:flex; gap:0.5rem; margin-top:0.5rem; }
 .rayon-footer input { flex:1; padding:0.3rem; }
-.rayon-actions button { display:none; background:#f4f3f3; margin:0 2px; color:#666; font-size:1rem; }
 
 /* =================================================
    PRODUIT
@@ -40,40 +45,23 @@ h1 { text-align:center; margin-bottom:1rem; padding:0.5rem; background:#828181; 
 .produits-container { margin-top:0.5rem; }
 .produit-nom { margin-left:5px; flex:1; cursor:text; }
 .produit-coche .produit-nom { text-decoration:line-through; opacity:0.5; }
-
-/* Champs ajout produit */
 input.nouveau-produit { padding:0.3rem; border-radius:4px; border:1px solid #ccc; width:100%; }
 
 /* Croix suppression produit */
-.btn-supprimer-produit {
-  width:18px; height:18px; position:relative; display:inline-block; cursor:pointer;
-}
+.btn-supprimer-produit { width:18px; height:18px; position:relative; cursor:pointer; background:none; border:none; }
 .btn-supprimer-produit::before,
-.btn-supprimer-produit::after {
-  content:''; position:absolute; top:50%; left:50%; width:12px; height:2px; background:#666;
-}
+.btn-supprimer-produit::after { content:''; position:absolute; top:50%; left:50%; width:12px; height:2px; background:#666; }
 .btn-supprimer-produit::before { transform:translate(-50%,-50%) rotate(45deg); }
 .btn-supprimer-produit::after { transform:translate(-50%,-50%) rotate(-45deg); }
 
-/* =================================================
-   CHECKBOX
-================================================= */
+/* CHECKBOX */
 .produit-checkbox { appearance:none; -webkit-appearance:none; width:16px; height:16px; border:2px solid #666; border-radius:4px; background:#efefef; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
 .produit-checkbox:checked { background:#666; }
 .produit-checkbox:checked::after { content:"✓"; color:#fff; font-size:12px; }
 
-/* =================================================
-   INTERACTIONS
-================================================= */
-.rayon:hover .rayon-actions button,
-.produit:hover .btn-supprimer-produit {
-  display:inline-block;
-}
+/* Interactions hover */
+.rayon:hover .btn-supprimer-rayon,
+.produit:hover .btn-supprimer-produit { display:inline-block; }
 
-/* =================================================
-   RESPONSIVE
-================================================= */
-@media (max-width:430px){
-  .rayon-footer { flex-direction:column; }
-  .add-rayon { flex-direction:column; }
-}
+/* Responsive */
+@media(max-width:430px){ .rayon-footer,.add-rayon { flex-direction:column; } }
