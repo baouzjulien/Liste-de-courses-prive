@@ -190,9 +190,9 @@ function initRayonActions(rayon){
   });
 
   /* ========= AUTOCOMPLÉTION ========= */
-
+  // Dernière suggestion pour compléter avec Tab
   let lastSuggestion = null;
-
+  // Débounce pour éviter trop d'appels
   const debouncedAutocomplete = debounce(()=>{
     const value = inputProd.value;
     if(!value) return;
@@ -207,9 +207,9 @@ function initRayonActions(rayon){
     inputProd.value = match.nom;
     inputProd.setSelectionRange(value.length, match.nom.length);
   });
-
+  // Événement input
   inputProd.addEventListener('input', debouncedAutocomplete);
-
+  // Gestion de la touche Tab
   inputProd.addEventListener('keydown', e=>{
     if(e.key==='Tab' && lastSuggestion){
       e.preventDefault();
@@ -220,7 +220,7 @@ function initRayonActions(rayon){
       );
     }
   });
-
+  // Ajout produit à l'appui de la touche Entrée
   inputProd.addEventListener('keydown', e=>{
     if(e.key!=='Enter') return;
 
@@ -240,7 +240,7 @@ function initRayonActions(rayon){
       lastSuggestion=null;
       return;
     }
-
+    // Création et ajout du produit
     const pObj = { id: crypto.randomUUID(), nom: val, coche:false };
     r.produits.push(pObj);
     addProduit(contProd, val, pObj.id);
