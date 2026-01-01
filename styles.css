@@ -79,9 +79,12 @@ input, button {
 }
 
 /* Collapse */
-.rayon.collapsed .produits-container {
+/* Collapse */
+.rayon.collapsed .produits-container,
+.rayon.collapsed .rayon-footer {
   display: none;
 }
+
 
 /* =================================================
    PRODUITS
