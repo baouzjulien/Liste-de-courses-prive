@@ -2,7 +2,7 @@ lien de test de l'app : https://baouzjulien.github.io/Liste-de-courses/
 
 # Liste de Courses Collaborative
 
-Une petite application web pour gérer une liste de courses avec des rayons et des produits, synchronisée via Google Sheets. Optimisée pour un usage mobile et desktop.
+Une petite application web pour gérer une liste de courses avec des rayons et des produits, synchronisée via Google Sheets. Optimisée pour un usage mobile et desktop. Utilisation idéale pour deux utilisateurs max car synchronisation depuis API au raffraichissement de la page.
 
 ## Fonctionnalités
 
