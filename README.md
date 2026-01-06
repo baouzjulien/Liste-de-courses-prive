@@ -25,4 +25,4 @@ Une petite application web pour gérer une liste de courses avec des rayons et d
 
 - L’URL de l’API Google Sheets est définie dans `script.js` :  
 ```js
-const API_URL = "https://script.google.com/macros/s/AKfycbyt1rnaburyDKblXGC0BUKh6-1JLtGcOhxrZiNe8Bye09enlV_EU7_37WHFz4Ymo8_W/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx1y9Bjn_5n7v6s8lZ_QZ0PyeofuxoYO4Sp6lWj_blouZe-84ml35IPB0zdSF8vc0Y/exec";
