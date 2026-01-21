@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Liste de courses</title>
-  <!-- Manifest pour PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#141414">
-  <link rel="stylesheet" href="styles.css">
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste de courses</title>
+    <!-- Manifest pour PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#141414">
+    <link rel="stylesheet" href="styles.css">
+  </head>
 
-<body>
+  <body>
   <div id="loader" class="loader hidden">
     <div class="spinner"></div>
     <p>Chargement…</p>
   </div>
+  
   <div class="container">
-    <h1>Liste de courses</h1>
-    <img src="icons/icon-rafraichir.png" alt="icone actualisation" class="actualisation-ico" id="actu-ico">
+    <h1>Liste de courses<span class="actu-wrapper"><img src="icons/icon-rafraichir.png" alt="icone actualisation" class="actualisation-ico" id="actu-ico"></span></h1>
     <!-- Ajout rayon -->
     <div class="add-rayon">
       <input type="text" id="nouveau-rayon" placeholder="Ajouter un rayon" autocomplete="off">

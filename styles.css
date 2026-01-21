@@ -13,9 +13,16 @@ body {
 }
 
 h1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 2rem;
   margin-bottom: 16px;
   color: #222;
+}
+
+.actu-wrapper {
+  display: inline-flex;
 }
 
 input, button {
@@ -254,9 +261,6 @@ input, button {
    ACTUALISATION ICONE
 ================================================= */
 .actualisation-ico {
-  position: fixed;
-  top: 40px;
-  right: 40px;
   width: 30px;
   height: 30px;
   cursor: pointer;
